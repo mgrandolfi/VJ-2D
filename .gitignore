@@ -1,1 +1,27 @@
+# IDE
 .vscode/
+.vs/
+
+# Build artifacts
+Debug/
+Release/
+x64/
+x86/
+*.obj
+*.exe
+*.pdb
+*.ilk
+*.iobj
+*.ipdb
+*.log
+*.tlog
+*.lastbuildstate
+
+# Visual Studio user files
+*.vcxproj.user
+*.suo
+*.opensdf
+*.sdf
+.opendb
+*.VC.db
+*.VC.opendb
