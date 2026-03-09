@@ -26,6 +26,7 @@ public:
 	
 private:
 	bool bJumping;
+	bool door, climb, final_door;
 	glm::ivec2 tileMapDispl, posPlayer;
 	int jumpAngle, startY;
 	Texture spritesheet;
