@@ -35,6 +35,12 @@ Scene::~Scene()
 	LEVEL 5: silvestre + tasmania + lucas
 */
 
+bool Scene::checkCollision(const glm::vec2 &posA, const glm::vec2 &posB, const glm::vec2 &sizeA, const glm::vec2 &sizeB) {
+	return (posA.x < posB.x + sizeB.x &&
+            posA.x + sizeA.x > posB.x &&
+            posA.y < posB.y + sizeB.y &&
+            posA.y + sizeA.y > posB.y);
+}
 
 void Scene::init()
 {
@@ -44,6 +50,13 @@ void Scene::init()
 	player->init(glm::ivec2(SCREEN_X, SCREEN_Y), texProgram);
 	player->setPosition(glm::vec2(INIT_PLAYER_X_TILES * map->getTileSize(), INIT_PLAYER_Y_TILES * map->getTileSize()));
 	player->setTileMap(map);
+
+	for (int i = 0; i < 4; ++i) {
+		enemies[i] = new Enemy();
+		enemies[i]->init(glm::ivec2(SCREEN_X, SCREEN_Y), texProgram, static_cast<EnemyTypes>(i)); //REVIEW - Setear el tipo de enemigo según el nivel
+		enemies[i]->setTileMap(map);
+	}
+	
 	projection = glm::ortho(0.f, float(SCREEN_WIDTH), float(SCREEN_HEIGHT), 0.f);
 	currentTime = 0.0f;
 }
@@ -52,6 +65,16 @@ void Scene::update(int deltaTime)
 {
 	currentTime += deltaTime;
 	player->update(deltaTime);
+
+	for (int i = 0; i < 3; ++i) { //REVIEW - son 3 enemigos max por level, adaptar a escena
+		enemies[i]->update(deltaTime);
+
+		//FIXME - acabar la funcion de colisiones
+		if (checkCollision()) {
+			if (player->getLives() == 0) return;//FIXME - llamar a funcion acabar juego
+			else player->dies();
+		}
+	}
 }
 
 void Scene::render()

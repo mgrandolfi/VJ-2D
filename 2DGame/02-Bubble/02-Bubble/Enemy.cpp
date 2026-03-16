@@ -12,11 +12,6 @@ enum EnemyAnims
 	JUMP_LEFT, JUMP_RIGHT, LAND_LEFT, LAND_RIGHT, //4
 };
 
-enum EnemyTypes
-{
-	PIOLIN, LUCAS, SILVESTRE, TASMANIA
-};
-
 Enemy::Enemy()
 {
 	sprite = NULL;

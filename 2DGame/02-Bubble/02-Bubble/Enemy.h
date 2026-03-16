@@ -5,6 +5,11 @@
 #include "Sprite.h"
 #include "TileMap.h"
 
+enum EnemyTypes
+{
+	PIOLIN, LUCAS, SILVESTRE, TASMANIA
+};
+
 
 class Enemy
 {

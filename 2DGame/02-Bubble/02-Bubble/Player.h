@@ -23,16 +23,17 @@ public:
 	
 	void setTileMap(TileMap *tileMap);
 	void setPosition(const glm::vec2 &pos);
+	void dies();
+	int getLives();
 	
 private:
-	bool bJumping;
 	bool door, climb, final_door;
 	glm::ivec2 tileMapDispl, posPlayer;
 	int jumpAngle, startY;
 	Texture spritesheet;
 	Sprite *sprite;
 	TileMap *map;
-
+	int livesPlayer;
 };
 
 

@@ -6,6 +6,7 @@
 #include "ShaderProgram.h"
 #include "TileMap.h"
 #include "Player.h"
+#include "Enemy.h"
 
 
 // Scene contains all the entities of our game.
@@ -25,10 +26,12 @@ public:
 
 private:
 	void initShaders();
+	bool checkCollision(const glm::vec2 &posA, const glm::vec2 &posB, const glm::vec2 &sizeA, const glm::vec2 &sizeB);
 
 private:
 	TileMap *map;
 	Player *player;
+	Enemy *enemies[4];
 	ShaderProgram texProgram;
 	float currentTime;
 	glm::mat4 projection;
