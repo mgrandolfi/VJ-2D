@@ -27,11 +27,19 @@ Scene::~Scene()
 		delete player;
 }
 
+/*
+	LEVEL 1: piolin
+	LEVEL 2: lucas + piolin
+	LEVEL 3: piolin + silvestre
+	LEVEL 4: lucas + tasmania
+	LEVEL 5: silvestre + tasmania + lucas
+*/
+
 
 void Scene::init()
 {
 	initShaders();
-	map = TileMap::createTileMap("levels/level02.txt", glm::vec2(SCREEN_X, SCREEN_Y), texProgram);
+	map = TileMap::createTileMap("levels/level01.txt", glm::vec2(SCREEN_X, SCREEN_Y), texProgram);
 	player = new Player();
 	player->init(glm::ivec2(SCREEN_X, SCREEN_Y), texProgram);
 	player->setPosition(glm::vec2(INIT_PLAYER_X_TILES * map->getTileSize(), INIT_PLAYER_Y_TILES * map->getTileSize()));
