@@ -10,6 +10,7 @@
 #define FALL_STEP 4
 
 
+
 enum PlayerAnims
 {
 	STAND_LEFT, STAND_RIGHT, MOVE_LEFT, MOVE_RIGHT, //4
@@ -35,7 +36,6 @@ Player::~Player()
 
 void Player::init(const glm::ivec2 &tileMapPos, ShaderProgram &shaderProgram)
 {
-	bJumping = climb = door = false;
 	spritesheet.loadFromFile("images/bugs.png", TEXTURE_PIXEL_FORMAT_RGBA);
 	sprite = Sprite::createSprite(glm::ivec2(32, 32), glm::vec2(0.09, 0.09), &spritesheet, &shaderProgram); // donde 1/10 = 0.1, porque son 10 filas x 10 columnas de sprites en la imagen
 	sprite->setNumberAnimations(23); //son la cantidad de animaciones que hay en el enum
