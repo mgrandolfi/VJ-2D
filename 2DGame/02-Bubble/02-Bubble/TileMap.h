@@ -12,6 +12,11 @@
 // it builds a single VBO that contains all tiles. As a result the render
 // method draws the whole map independently of what is visible.
 
+enum TileType
+{
+	TILE_EMPTY,
+	TILE_BLOCK
+};
 
 class TileMap
 {
@@ -29,10 +34,16 @@ public:
 	void free();
 	
 	int getTileSize() const { return tileSize; }
+	int getMapWidth() const { return mapSize.x; }
+	int getMapHeight() const { return mapSize.y; }
 
 	bool collisionMoveLeft(const glm::ivec2 &pos, const glm::ivec2 &size) const;
 	bool collisionMoveRight(const glm::ivec2 &pos, const glm::ivec2 &size) const;
 	bool collisionMoveDown(const glm::ivec2 &pos, const glm::ivec2 &size, int *posY) const;
+	bool collisionMoveUp(const glm::ivec2 &pos, const glm::ivec2 &size, int *posY) const;
+
+	void setTileType(int tile, TileType type);
+	void setTileTypeRange(int tileFrom, int tileTo, TileType type);
 	
 private:
 	bool loadLevel(const string &levelFile);
@@ -48,7 +59,8 @@ private:
 	Texture tilesheet;
 	glm::vec2 tileTexSize;
 	int *map;
-
+	TileType *tileTypeMap; //tipo de tile para cada tile del mapa
+	int totalTilesMap; //cantidad de tiles que conforman el mapa
 };
 
 

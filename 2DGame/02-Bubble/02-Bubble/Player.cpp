@@ -20,7 +20,6 @@ enum PlayerAnims
 	DIE_LEFT, DIE_RIGHT, BOMB_LEFT, BOMB_RIGHT, //4
 	HURT_LEFT, HURT_RIGHT, OPEN_CHEST_LEFT, OPEN_CHEST_RIGHT //4
 };
-//falta acciones para las animaciones de velocidad y obtencion de poderes
 
 Player::Player()
 {
@@ -143,12 +142,12 @@ void Player::init(const glm::ivec2 &tileMapPos, ShaderProgram &shaderProgram)
 void Player::update(int deltaTime)
 {
 	sprite->update(deltaTime);
-	if(Game::instance().getKey(GLFW_KEY_LEFT))
+	if(Game::instance().getKey(GLFW_KEY_LEFT) && posPlayer.x > -7)
 	{
 		if(sprite->animation() != MOVE_LEFT)
 			sprite->changeAnimation(MOVE_LEFT);
 		posPlayer.x -= 2;
-		if(map->collisionMoveLeft(posPlayer, glm::ivec2(32, 32)))
+		if(map->collisionMoveLeft(glm::ivec2(posPlayer.x, posPlayer.y), glm::ivec2(32, 32)))
 		{
 			posPlayer.x += 2;
 			sprite->changeAnimation(STAND_LEFT);
@@ -156,6 +155,9 @@ void Player::update(int deltaTime)
 	}
 	else if(Game::instance().getKey(GLFW_KEY_RIGHT))
 	{
+		if (posPlayer.x >= 304) {
+				return;
+		}
 		if(sprite->animation() != MOVE_RIGHT)
 			sprite->changeAnimation(MOVE_RIGHT);
 		posPlayer.x += 2;
@@ -185,6 +187,7 @@ void Player::update(int deltaTime)
 		sprite->changeAnimation(DISAPPEAR);
 	}
 	sprite->setPosition(glm::vec2(float(tileMapDispl.x + posPlayer.x), float(tileMapDispl.y + posPlayer.y)));
+	cout << "Player position: (" << posPlayer.x << ", " << posPlayer.y << ")" << endl;
 }
 
 void Player::render()

@@ -18,20 +18,31 @@ TileMap *TileMap::createTileMap(const string &levelFile, const glm::vec2 &minCoo
 
 TileMap::TileMap(const string &levelFile, const glm::vec2 &minCoords, ShaderProgram &program)
 {
-	loadLevel(levelFile);
-	prepareArrays(minCoords, program);
+	map = NULL;
+	tileTypeMap = NULL;
+	nTiles = 0;
+	vao = 0;
+	vbo = 0;
+	if(loadLevel(levelFile))
+		prepareArrays(minCoords, program);
 }
 
 TileMap::~TileMap()
 {
 	if(map != NULL)
 		delete [] map;
-	free();
+	if(tileTypeMap != NULL)
+		delete [] tileTypeMap;
+	glDeleteVertexArrays(1, &vao);
+	glDeleteBuffers(1, &vbo);
 }
 
 
 void TileMap::render() const
 {
+	if(vao == 0 || nTiles == 0)
+		return;
+
 	glEnable(GL_TEXTURE_2D);
 	tilesheet.use();
 	glBindVertexArray(vao);
@@ -43,7 +54,6 @@ void TileMap::render() const
 
 void TileMap::free()
 {
-	glDeleteVertexArrays(1, &vao);
 	glDeleteBuffers(1, &vbo);
 }
 
@@ -52,7 +62,7 @@ bool TileMap::loadLevel(const string &levelFile)
 	ifstream fin;
 	string line, tilesheetFile;
 	stringstream sstream;
-	char tile;
+	int tile;
 	
 	fin.open(levelFile.c_str());
 	if(!fin.is_open())
@@ -61,12 +71,15 @@ bool TileMap::loadLevel(const string &levelFile)
 	if(line.compare(0, 7, "TILEMAP") != 0)
 		return false;
 	getline(fin, line);
+	sstream.clear();
 	sstream.str(line);
 	sstream >> mapSize.x >> mapSize.y;
 	getline(fin, line);
+	sstream.clear();
 	sstream.str(line);
 	sstream >> tileSize >> blockSize;
 	getline(fin, line);
+	sstream.clear();
 	sstream.str(line);
 	sstream >> tilesheetFile;
 	tilesheet.loadFromFile(tilesheetFile, TEXTURE_PIXEL_FORMAT_RGBA);
@@ -75,8 +88,18 @@ bool TileMap::loadLevel(const string &levelFile)
 	tilesheet.setMinFilter(GL_NEAREST);
 	tilesheet.setMagFilter(GL_NEAREST);
 	getline(fin, line);
+	sstream.clear();
 	sstream.str(line);
 	sstream >> tilesheetSize.x >> tilesheetSize.y;
+
+	totalTilesMap = tilesheetSize.x * tilesheetSize.y;
+	tileTypeMap = new TileType[totalTilesMap];
+
+	for (int i = 0; i < totalTilesMap; ++i) {
+		if (i == 0) tileTypeMap[i] = TILE_BLOCK;
+		else tileTypeMap[i] = TILE_EMPTY;
+	}
+	
 	tileTexSize = glm::vec2(1.f / tilesheetSize.x, 1.f / tilesheetSize.y);
 	
 	map = new int[mapSize.x * mapSize.y];
@@ -84,16 +107,9 @@ bool TileMap::loadLevel(const string &levelFile)
 	{
 		for(int i=0; i<mapSize.x; i++)
 		{
-			fin.get(tile);
-			if(tile == ' ')
-				map[j*mapSize.x+i] = 0;
-			else
-				map[j*mapSize.x+i] = tile - int('0');
+			fin >> tile;
+			map[j*mapSize.x+i] = tile;
 		}
-		fin.get(tile);
-#ifndef _WIN32
-		fin.get(tile);
-#endif
 	}
 	fin.close();
 	
@@ -113,12 +129,12 @@ void TileMap::prepareArrays(const glm::vec2 &minCoords, ShaderProgram &program)
 		for(int i=0; i<mapSize.x; i++)
 		{
 			tile = map[j * mapSize.x + i];
-			if(tile != 0)
+			if(tile >= 0)
 			{
 				// Non-empty tile
 				nTiles++;
 				posTile = glm::vec2(minCoords.x + i * tileSize, minCoords.y + j * tileSize);
-				texCoordTile[0] = glm::vec2(float((tile-1)%tilesheetSize.x) / tilesheetSize.x, float((tile-1)/tilesheetSize.x) / tilesheetSize.y);
+				texCoordTile[0] = glm::vec2(float((tile)%tilesheetSize.x) / tilesheetSize.x, float((tile)/tilesheetSize.x) / tilesheetSize.y);
 				texCoordTile[1] = texCoordTile[0] + tileTexSize;
 				//texCoordTile[0] += halfTexel;
 				texCoordTile[1] -= halfTexel;
@@ -149,10 +165,6 @@ void TileMap::prepareArrays(const glm::vec2 &minCoords, ShaderProgram &program)
 	texCoordLocation = program.bindVertexAttribute("texCoord", 2, 4*sizeof(float), (void *)(2*sizeof(float)));
 }
 
-// Collision tests for axis aligned bounding boxes.
-// Method collisionMoveDown also corrects Y coordinate if the box is
-// already intersecting a tile below.
-
 bool TileMap::collisionMoveLeft(const glm::ivec2 &pos, const glm::ivec2 &size) const
 {
 	int x, y0, y1;
@@ -162,10 +174,13 @@ bool TileMap::collisionMoveLeft(const glm::ivec2 &pos, const glm::ivec2 &size) c
 	y1 = (pos.y + size.y - 1) / tileSize;
 	for(int y=y0; y<=y1; y++)
 	{
-		if(map[y*mapSize.x+x] != 0)
+		if(tileTypeMap[map[y*mapSize.x+x]] == TILE_BLOCK)
+		{
+			cout << "Collision left at tile (" << x << ", " << y << ")" << endl;
 			return true;
+		}
 	}
-	
+
 	return false;
 }
 
@@ -178,10 +193,13 @@ bool TileMap::collisionMoveRight(const glm::ivec2 &pos, const glm::ivec2 &size) 
 	y1 = (pos.y + size.y - 1) / tileSize;
 	for(int y=y0; y<=y1; y++)
 	{
-		if(map[y*mapSize.x+x] != 0)
+		if(tileTypeMap[map[y*mapSize.x+x]] == TILE_BLOCK)
+		{
+			cout << "Collision right at tile (" << x << ", " << y << ")" << endl;
 			return true;
+		}
 	}
-	
+
 	return false;
 }
 
@@ -194,45 +212,49 @@ bool TileMap::collisionMoveDown(const glm::ivec2 &pos, const glm::ivec2 &size, i
 	y = (pos.y + size.y - 1) / tileSize;
 	for(int x=x0; x<=x1; x++)
 	{
-		if(map[y*mapSize.x+x] != 0)
+		if(tileTypeMap[map[y*mapSize.x+x]] == TILE_BLOCK)
 		{
 			if(*posY - tileSize * y + size.y <= 4)
 			{
 				*posY = tileSize * y - size.y;
 				return true;
+				cout << "Collision down at tile (" << x << ", " << y << ")" << endl;
 			}
 		}
 	}
-	
+
 	return false;
 }
 
+bool TileMap::collisionMoveUp(const glm::ivec2 &pos, const glm::ivec2 &size, int *posY) const
+{
+	int x0, x1, y;
 
+	x0 = pos.x / tileSize;
+	x1 = (pos.x + size.x - 1) / tileSize;
+	y = pos.y / tileSize;
+	for(int x=x0; x<=x1; x++)
+	{
+		if(tileTypeMap[map[y*mapSize.x+x]] == TILE_BLOCK)
+		{
+			*posY = tileSize * (y + 1);
+			return true;
+			cout << "Collision up at tile (" << x << ", " << y << ")" << endl;
+		}
+	}
 
+	return false;
+}
 
+void TileMap::setTileType(int tile, TileType type)
+{
+	if(tile >= 0 && tile < totalTilesMap)
+		tileTypeMap[tile] = type;
+}
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+void TileMap::setTileTypeRange(int tileFrom, int tileTo, TileType type)
+{
+	for(int i = tileFrom; i <= tileTo; i++)
+		setTileType(i, type);
+}
 

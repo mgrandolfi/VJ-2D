@@ -22,7 +22,8 @@ CPP_SRCS = \
   Shader.cpp \
   ShaderProgram.cpp \
   Texture.cpp \
-  TileMap.cpp
+  TileMap.cpp \
+  Enemy.cpp \
 
 CPP_OBJS = $(CPP_SRCS:.cpp=.o)
 
