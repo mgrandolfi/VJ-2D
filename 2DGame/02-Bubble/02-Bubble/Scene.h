@@ -27,6 +27,7 @@ public:
 private:
 	void initShaders();
 	bool checkCollision(const glm::vec2 &posA, const glm::vec2 &posB, const glm::vec2 &sizeA, const glm::vec2 &sizeB);
+	void initMap(int mapActive);
 
 private:
 	TileMap *map;

@@ -45,9 +45,9 @@ bool Scene::checkCollision(const glm::vec2 &posA, const glm::vec2 &posB, const g
 void Scene::init()
 {
 	initShaders();
-	map = TileMap::createTileMap("levels/level_1.txt", glm::vec2(SCREEN_X, SCREEN_Y), texProgram);
-	map->setTileType(62, TILE_BLOCK);
-	map->setTileType(57, TILE_BLOCK);
+
+	int mapActive = 3;
+	initMap(mapActive);
 
 	player = new Player();
 	player->init(glm::ivec2(SCREEN_X, SCREEN_Y), texProgram);
@@ -124,6 +124,40 @@ void Scene::initShaders()
 	texProgram.bindFragmentOutput("outColor");
 	vShader.free();
 	fShader.free();
+}
+
+void Scene::initMap(int mapActive) {
+	if (mapActive == 1) {
+		map = TileMap::createTileMap("levels/level_1.txt", glm::vec2(SCREEN_X, SCREEN_Y), texProgram);
+		int posBlock[20] = {0,3,4,7,10,11,13,14,15,57,62,-1}; //ID bloques bloqueantes del level 1
+		for (int i = 0; posBlock[i] != -1; ++i) {
+			map->setTileType(posBlock[i], TILE_BLOCK);
+		}
+	} else if (mapActive == 2) {
+		map = TileMap::createTileMap("levels/level_2.txt", glm::vec2(SCREEN_X, SCREEN_Y), texProgram);
+		int posBlock[20] = {0,3,4,7,10,11,13,14,15,57,62,-1}; //ID bloques bloqueantes del level 2 (modificar acorde con nivel)
+		for (int i = 0; posBlock[i] != -1; ++i) {
+			map->setTileType(posBlock[i], TILE_BLOCK);
+		}
+	} else if (mapActive == 3) {
+		map = TileMap::createTileMap("levels/level_3.txt", glm::vec2(SCREEN_X, SCREEN_Y), texProgram);
+		int posBlock[20] = {0,3,4,7,10,11,13,14,15,57,62,-1}; //ID bloques bloqueantes del level 3 (modificar acorde con nivel)
+		for (int i = 0; posBlock[i] != -1; ++i) {
+			map->setTileType(posBlock[i], TILE_BLOCK);
+		}
+	} else if (mapActive == 4) {
+		map = TileMap::createTileMap("levels/level_4.txt", glm::vec2(SCREEN_X, SCREEN_Y), texProgram);
+		int posBlock[20] = {0,3,4,7,10,11,13,14,15,57,62,-1}; //ID bloques bloqueantes del level 4 (modificar acorde con nivel)
+		for (int i = 0; posBlock[i] != -1; ++i) {
+			map->setTileType(posBlock[i], TILE_BLOCK);
+		}
+	} else { // mapActive == 5
+		map = TileMap::createTileMap("levels/level_5.txt", glm::vec2(SCREEN_X, SCREEN_Y), texProgram);
+		int posBlock[20] = {0,3,4,7,10,11,13,14,15,57,62,-1}; //ID bloques bloqueantes del level 5 (modificar acorde con nivel)
+		for (int i = 0; posBlock[i] != -1; ++i) {
+			map->setTileType(posBlock[i], TILE_BLOCK);
+		}
+	}
 }
 
 
