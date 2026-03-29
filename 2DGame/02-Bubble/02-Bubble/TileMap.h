@@ -7,15 +7,14 @@
 #include "ShaderProgram.h"
 
 
-// Class Tilemap is capable of loading a tile map from a text file in a very
-// simple format (see level01.txt for an example). With this information
-// it builds a single VBO that contains all tiles. As a result the render
-// method draws the whole map independently of what is visible.
-
 enum TileType
 {
 	TILE_EMPTY,
-	TILE_BLOCK
+	TILE_BLOCK,
+	TILE_LADDER,
+	TILE_DOOR,
+	TILE_JUMP,
+	TILE_WARP
 };
 
 class TileMap
@@ -25,14 +24,13 @@ private:
 	TileMap(const string &levelFile, const glm::vec2 &minCoords, ShaderProgram &program);
 
 public:
-	// Tile maps can only be created inside an OpenGL context
 	static TileMap *createTileMap(const string &levelFile, const glm::vec2 &minCoords, ShaderProgram &program);
 
 	~TileMap();
 
 	void render() const;
 	void free();
-	
+
 	int getTileSize() const { return tileSize; }
 	int getMapWidth() const { return mapSize.x; }
 	int getMapHeight() const { return mapSize.y; }
@@ -42,9 +40,16 @@ public:
 	bool collisionMoveDown(const glm::ivec2 &pos, const glm::ivec2 &size, int *posY) const;
 	bool collisionMoveUp(const glm::ivec2 &pos, const glm::ivec2 &size, int *posY) const;
 
+	// Tile type queries at world pixel positions
+	TileType tileTypeAt(int worldX, int worldY) const;
+	bool isOnLadder(const glm::ivec2 &pos, const glm::ivec2 &size) const;
+	bool isOnDoor(const glm::ivec2 &pos, const glm::ivec2 &size) const;
+	bool isOnJump(const glm::ivec2 &pos, const glm::ivec2 &size) const;
+	bool isOnWarp(const glm::ivec2 &pos, const glm::ivec2 &size) const;
+
 	void setTileType(int tile, TileType type);
 	void setTileTypeRange(int tileFrom, int tileTo, TileType type);
-	
+
 private:
 	bool loadLevel(const string &levelFile);
 	void prepareArrays(const glm::vec2 &minCoords, ShaderProgram &program);
@@ -59,11 +64,9 @@ private:
 	Texture tilesheet;
 	glm::vec2 tileTexSize;
 	int *map;
-	TileType *tileTypeMap; //tipo de tile para cada tile del mapa
-	int totalTilesMap; //cantidad de tiles que conforman el mapa
+	TileType *tileTypeMap;
+	int totalTilesMap;
 };
 
 
 #endif // _TILE_MAP_INCLUDE
-
-

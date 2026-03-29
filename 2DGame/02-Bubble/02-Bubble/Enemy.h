@@ -5,10 +5,8 @@
 #include "Sprite.h"
 #include "TileMap.h"
 
-enum EnemyTypes
-{
-	PIOLIN, LUCAS, SILVESTRE, TASMANIA
-};
+
+enum EnemyTypes { PIOLIN, LUCAS, SILVESTRE, TASMANIA };
 
 
 class Enemy
@@ -19,33 +17,48 @@ public:
 	~Enemy();
 
 public:
-	void init(const glm::ivec2 &tileMapPos, ShaderProgram &shaderProgram, EnemyTypes enemyType);
+	void init(const glm::ivec2 &tileMapPos, ShaderProgram &shaderProgram, EnemyTypes enemyType, int tileSize);
 	void update(int deltaTime);
 	void render();
-	
+
 	void setTileMap(TileMap *tileMap);
 	void setPosition(const glm::vec2 &pos);
+	void setTarget(const glm::ivec2 &pos) { targetPos = pos; }
 
-    //funciones agregadas de los enemigos
-    void patrolMovement(int deltaTime);
-	void chasingPlayer_Lucas();
-    void chasingPlayer_Silvestre();
-    void chasingPlayer_Tasmania();
+	glm::ivec2 getPosition() const { return posEnemy; }
+	bool       isAlive()     const { return alive; }
+	void       kill()              { alive = false; }
+
+private:
+	void patrolMovement(int deltaTime);
+	void chasingPlayer_Lucas(int deltaTime);
+	void chasingPlayer_Silvestre(int deltaTime);
+	void chasingPlayer_Tasmania(int deltaTime);
 
 private:
 	glm::ivec2 tileMapDispl, posEnemy;
-	int startY;
-	Texture spritesheet;
-	Sprite *sprite;
-	TileMap *map;
-    EnemyTypes type;
+	glm::ivec2 targetPos;
 
-    float dir, speed, patrolMin, patrolMax, timeWait;
-    int steps, maxSteps;
-    bool isStopped;
+	Texture    spritesheet;
+	Sprite    *sprite;
+	TileMap   *map;
+
+	EnemyTypes type;
+	bool       alive;
+
+	float      dir;         //  1 = right, -1 = left
+	float      speed;
+	float      patrolMin, patrolMax;
+	float      timeWait;
+	int        steps, maxSteps;
+	bool       isStopped;
+
+	// Used by Silvestre for ladder climbing
+	int        spriteSize;
+
+	float      climbVy;
+	bool       onLadder;
 };
 
 
-#endif 
-
-
+#endif // _ENEMY_INCLUDE

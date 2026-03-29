@@ -7,6 +7,12 @@
 
 using namespace std;
 
+// Solid for movement (jump pads must be walkable, not only decorative)
+static bool tileBlocksMovement(TileType t)
+{
+	return t == TILE_BLOCK || t == TILE_JUMP;
+}
+
 
 TileMap *TileMap::createTileMap(const string &levelFile, const glm::vec2 &minCoords, ShaderProgram &program)
 {
@@ -167,82 +173,86 @@ void TileMap::prepareArrays(const glm::vec2 &minCoords, ShaderProgram &program)
 
 bool TileMap::collisionMoveLeft(const glm::ivec2 &pos, const glm::ivec2 &size) const
 {
-	int x, y0, y1;
-	
-	x = pos.x / tileSize;
-	y0 = pos.y / tileSize;
-	y1 = (pos.y + size.y - 1) / tileSize;
-	for(int y=y0; y<=y1; y++)
-	{
-		if(tileTypeMap[map[y*mapSize.x+x]] == TILE_BLOCK)
-		{
-			cout << "Collision left at tile (" << x << ", " << y << ")" << endl;
-			return true;
-		}
-	}
+	int x  = pos.x / tileSize;
+	int y0 = pos.y / tileSize;
+	int y1 = (pos.y + size.y - 1) / tileSize;
 
+	if (x < 0 || x >= mapSize.x) return false;
+	if (y0 < 0) y0 = 0;
+	if (y1 >= mapSize.y) y1 = mapSize.y - 1;
+
+	for (int y = y0; y <= y1; y++)
+	{
+		int tile = map[y * mapSize.x + x];
+		if (tile >= 0 && tile < totalTilesMap && tileBlocksMovement(tileTypeMap[tile]))
+			return true;
+	}
 	return false;
 }
 
 bool TileMap::collisionMoveRight(const glm::ivec2 &pos, const glm::ivec2 &size) const
 {
-	int x, y0, y1;
-	
-	x = (pos.x + size.x - 1) / tileSize;
-	y0 = pos.y / tileSize;
-	y1 = (pos.y + size.y - 1) / tileSize;
-	for(int y=y0; y<=y1; y++)
-	{
-		if(tileTypeMap[map[y*mapSize.x+x]] == TILE_BLOCK)
-		{
-			cout << "Collision right at tile (" << x << ", " << y << ")" << endl;
-			return true;
-		}
-	}
+	int x  = (pos.x + size.x - 1) / tileSize;
+	int y0 = pos.y / tileSize;
+	int y1 = (pos.y + size.y - 1) / tileSize;
 
+	if (x < 0 || x >= mapSize.x) return false;
+	if (y0 < 0) y0 = 0;
+	if (y1 >= mapSize.y) y1 = mapSize.y - 1;
+
+	for (int y = y0; y <= y1; y++)
+	{
+		int tile = map[y * mapSize.x + x];
+		if (tile >= 0 && tile < totalTilesMap && tileBlocksMovement(tileTypeMap[tile]))
+			return true;
+	}
 	return false;
 }
 
 bool TileMap::collisionMoveDown(const glm::ivec2 &pos, const glm::ivec2 &size, int *posY) const
 {
-	int x0, x1, y;
-	
-	x0 = pos.x / tileSize;
-	x1 = (pos.x + size.x - 1) / tileSize;
-	y = (pos.y + size.y - 1) / tileSize;
-	for(int x=x0; x<=x1; x++)
+	int x0 = pos.x / tileSize;
+	int x1 = (pos.x + size.x - 1) / tileSize;
+	int y  = (pos.y + size.y - 1) / tileSize;
+
+	if (y < 0 || y >= mapSize.y) return false;
+	if (x0 < 0) x0 = 0;
+	if (x1 >= mapSize.x) x1 = mapSize.x - 1;
+
+	for (int x = x0; x <= x1; x++)
 	{
-		if(tileTypeMap[map[y*mapSize.x+x]] == TILE_BLOCK)
+		int tile = map[y * mapSize.x + x];
+		if (tile >= 0 && tile < totalTilesMap && tileBlocksMovement(tileTypeMap[tile]))
 		{
-			if(*posY - tileSize * y + size.y <= 4)
+			if (*posY - tileSize * y + size.y <= 4)
 			{
 				*posY = tileSize * y - size.y;
 				return true;
-				cout << "Collision down at tile (" << x << ", " << y << ")" << endl;
 			}
 		}
 	}
-
 	return false;
 }
 
 bool TileMap::collisionMoveUp(const glm::ivec2 &pos, const glm::ivec2 &size, int *posY) const
 {
-	int x0, x1, y;
+	int x0 = pos.x / tileSize;
+	int x1 = (pos.x + size.x - 1) / tileSize;
+	int y  = pos.y / tileSize;
 
-	x0 = pos.x / tileSize;
-	x1 = (pos.x + size.x - 1) / tileSize;
-	y = pos.y / tileSize;
-	for(int x=x0; x<=x1; x++)
+	if (y < 0 || y >= mapSize.y) return false;
+	if (x0 < 0) x0 = 0;
+	if (x1 >= mapSize.x) x1 = mapSize.x - 1;
+
+	for (int x = x0; x <= x1; x++)
 	{
-		if(tileTypeMap[map[y*mapSize.x+x]] == TILE_BLOCK)
+		int tile = map[y * mapSize.x + x];
+		if (tile >= 0 && tile < totalTilesMap && tileBlocksMovement(tileTypeMap[tile]))
 		{
 			*posY = tileSize * (y + 1);
 			return true;
-			cout << "Collision up at tile (" << x << ", " << y << ")" << endl;
 		}
 	}
-
 	return false;
 }
 
@@ -256,5 +266,60 @@ void TileMap::setTileTypeRange(int tileFrom, int tileTo, TileType type)
 {
 	for(int i = tileFrom; i <= tileTo; i++)
 		setTileType(i, type);
+}
+
+TileType TileMap::tileTypeAt(int worldX, int worldY) const
+{
+	int tx = worldX / tileSize;
+	int ty = worldY / tileSize;
+	if(tx < 0 || tx >= mapSize.x || ty < 0 || ty >= mapSize.y)
+		return TILE_EMPTY;
+	int tile = map[ty * mapSize.x + tx];
+	if(tile < 0 || tile >= totalTilesMap)
+		return TILE_EMPTY;
+	return tileTypeMap[tile];
+}
+
+bool TileMap::isOnLadder(const glm::ivec2 &pos, const glm::ivec2 &size) const
+{
+	int cx = pos.x + size.x / 2;
+	int ty0 = pos.y / tileSize;
+	int ty1 = (pos.y + size.y - 1) / tileSize;
+	for(int ty = ty0; ty <= ty1; ++ty)
+	{
+		if(tileTypeAt(cx, ty * tileSize + tileSize / 2) == TILE_LADDER)
+			return true;
+	}
+	return false;
+}
+
+bool TileMap::isOnDoor(const glm::ivec2 &pos, const glm::ivec2 &size) const
+{
+	int cx = pos.x + size.x / 2;
+	int cy = pos.y + size.y / 2;
+	return tileTypeAt(cx, cy) == TILE_DOOR;
+}
+
+bool TileMap::isOnJump(const glm::ivec2 &pos, const glm::ivec2 &size) const
+{
+	int x0 = pos.x / tileSize;
+	int x1 = (pos.x + size.x - 1) / tileSize;
+	// First row strictly below sprite bottom — the tile surface we stand on
+	int y = (pos.y + size.y) / tileSize;
+	if(y >= mapSize.y) return false;
+	for(int x = x0; x <= x1; ++x)
+	{
+		int tile = map[y * mapSize.x + x];
+		if(tile >= 0 && tile < totalTilesMap && tileTypeMap[tile] == TILE_JUMP)
+			return true;
+	}
+	return false;
+}
+
+bool TileMap::isOnWarp(const glm::ivec2 &pos, const glm::ivec2 &size) const
+{
+	int cx = pos.x + size.x / 2;
+	int cy = pos.y + size.y / 2;
+	return tileTypeAt(cx, cy) == TILE_WARP;
 }
 
