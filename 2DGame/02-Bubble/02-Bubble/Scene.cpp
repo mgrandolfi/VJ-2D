@@ -25,6 +25,7 @@ Scene::Scene()
 	for (int i = 0; i < MAX_ENEMIES; ++i)
 		enemies[i] = NULL;
 	activeEnemies = 0;
+	keyWorldPixelSize = 16;
 }
 
 Scene::~Scene()
@@ -155,14 +156,21 @@ void Scene::initMap(int level)
 		                  25, 28, 35, 36, 41, 42, 57, 62, 64, 65, 61, -1};
 		for (int i = 0; blockIds[i] != -1; ++i)
 			map->setTileType(blockIds[i], TILE_BLOCK);
+		// Floor / stone art used as solid ground (tile 1 is common in level_1)
+		map->setTileType(1, TILE_BLOCK);
+		map->setTileType(5, TILE_BLOCK);
+		// Platform tops drawn with these ids — must collide or the player falls through
+		map->setTileType(29, TILE_BLOCK);
+		map->setTileType(30, TILE_BLOCK);
+		map->setTileType(31, TILE_BLOCK);
+		map->setTileType(32, TILE_BLOCK);
 		// Ladders
 		int ladderIds[] = {9, 12, 37, -1};
 		for (int i = 0; ladderIds[i] != -1; ++i)
 			map->setTileType(ladderIds[i], TILE_LADDER);
 		// Door
 		map->setTileType(2, TILE_DOOR);
-		// Structural platform/wall tiles not in the main blockIds
-		// NOTE: tiles 5,6,29,30,31,32 are walkable background — must stay EMPTY
+		// Tile 6 = spider web — stay pass-through (decoration)
 		int moreBlocks[] = { 8, 16, 26, 27, 33, 34, 38, 39, 40, -1 };
 		for (int i = 0; moreBlocks[i] != -1; ++i)
 			map->setTileType(moreBlocks[i], TILE_BLOCK);
@@ -206,7 +214,13 @@ void Scene::recreateWorldPickupSprites(int ts)
 	if (keyWorldSprite) { delete keyWorldSprite; keyWorldSprite = NULL; }
 	if (itemSprite)     { delete itemSprite;     itemSprite     = NULL; }
 
-	keyWorldSprite = Sprite::createSprite(glm::ivec2(ts, ts),
+	keyWorldPixelSize = (ts * 5) / 8;
+	if (keyWorldPixelSize < 10)
+		keyWorldPixelSize = 10;
+	if (keyWorldPixelSize > ts - 2)
+		keyWorldPixelSize = ts - 2;
+
+	keyWorldSprite = Sprite::createSprite(glm::ivec2(keyWorldPixelSize, keyWorldPixelSize),
 	                                      glm::vec2(1.f, 1.f), &keyIconTex, &texProgram);
 	keyWorldSprite->setNumberAnimations(1);
 	keyWorldSprite->setAnimationSpeed(0, 1);
@@ -379,8 +393,16 @@ void Scene::update(int deltaTime)
 		if (!enemiesFrozen)
 			enemies[i]->update(deltaTime);
 
+		glm::ivec2 pHitPos = playerPos;
+		glm::ivec2 pHitSize = playerSize;
+		if (map->isOnLadder(pHitPos, pHitSize))
+		{
+			pHitPos.x -= 6;
+			pHitSize.x += 12;
+		}
+
 		if (!player->isGodMode() && !player->isHurt() &&
-		    checkCollision(playerPos, enemies[i]->getPosition(), playerSize, enemySize))
+		    checkCollision(pHitPos, enemies[i]->getPosition(), pHitSize, enemySize))
 		{
 			player->dies();
 			if (player->getLives() <= 0)
@@ -441,7 +463,9 @@ void Scene::update(int deltaTime)
 			{
 				if (!enemies[i]->isAlive()) continue;
 				glm::ivec2 ePos = enemies[i]->getPosition();
-				if (abs(ePos.x - playerPos.x) < ts && ePos.y > playerPos.y)
+				int dx = abs(ePos.x - playerPos.x);
+				int dy = ePos.y - playerPos.y;
+				if (dx < ts * 3 && dy > 0 && dy < ts * 8)
 					enemies[i]->kill();
 			}
 			break;
@@ -498,12 +522,14 @@ void Scene::render()
 
 	map->render();
 
+	const int ts = map->getTileSize();
 	// Render uncollected keys in the world
 	for (int i = 0; i < keysRequired; ++i)
 	{
 		if (keys[i].collected) continue;
 		texProgram.setUniform4f("color", 1.f, 1.f, 0.f, 1.f);
-		keyWorldSprite->setPosition(glm::vec2(keys[i].pos));
+		glm::ivec2 off((ts - keyWorldPixelSize) / 2, (ts - keyWorldPixelSize) / 2);
+		keyWorldSprite->setPosition(glm::vec2(keys[i].pos + off));
 		keyWorldSprite->render();
 	}
 	texProgram.setUniform4f("color", 1.f, 1.f, 1.f, 1.f);

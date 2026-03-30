@@ -174,13 +174,13 @@ void Enemy::patrolMovement(int deltaTime)
 	if (posEnemy.x < 0)              posEnemy.x = 0;
 	if (posEnemy.x > mapW - spriteSize) posEnemy.x = mapW - spriteSize;
 
-	if (dir > 0 && map->collisionMoveRight(posEnemy, size))
+	if (dir > 0 && map->collisionMoveRight(posEnemy, size, true))
 	{
 		posEnemy.x -= int(speed);
 		dir = -1.f;
 		sprite->changeAnimation(WALK_LEFT);
 	}
-	else if (dir < 0 && map->collisionMoveLeft(posEnemy, size))
+	else if (dir < 0 && map->collisionMoveLeft(posEnemy, size, true))
 	{
 		posEnemy.x += int(speed);
 		dir = 1.f;
@@ -214,13 +214,13 @@ void Enemy::chasingPlayer_Lucas(int deltaTime)
 	if (posEnemy.x < 0)              posEnemy.x = 0;
 	if (posEnemy.x > mapW - spriteSize) posEnemy.x = mapW - spriteSize;
 
-	if (dir > 0 && map->collisionMoveRight(posEnemy, size))
+	if (dir > 0 && map->collisionMoveRight(posEnemy, size, true))
 	{
 		posEnemy.x -= int(speed);
 		dir = -1.f;
 		sprite->changeAnimation(WALK_LEFT);
 	}
-	else if (dir < 0 && map->collisionMoveLeft(posEnemy, size))
+	else if (dir < 0 && map->collisionMoveLeft(posEnemy, size, true))
 	{
 		posEnemy.x += int(speed);
 		dir = 1.f;
@@ -246,11 +246,23 @@ void Enemy::chasingPlayer_Silvestre(int deltaTime)
 			posEnemy.y += int(climbVy);
 			if (posEnemy.y < 0) posEnemy.y = 0;
 			if (posEnemy.y > mapH - spriteSize) posEnemy.y = mapH - spriteSize;
+			int dx = targetPos.x - posEnemy.x;
+			dir = (dx > 0) ? 1.f : -1.f;
+			sprite->changeAnimation((dir > 0) ? WALK_RIGHT : WALK_LEFT);
 		}
 		else
 		{
 			int dx = targetPos.x - posEnemy.x;
 			dir = (dx > 0) ? 1.f : -1.f;
+			sprite->changeAnimation((dir > 0) ? WALK_RIGHT : WALK_LEFT);
+			posEnemy.x += int(dir * speed);
+			if (posEnemy.x < 0)              posEnemy.x = 0;
+			if (posEnemy.x > mapW - spriteSize) posEnemy.x = mapW - spriteSize;
+			// On ladder rungs: do not block on ladder cells horizontally
+			if (dir > 0 && map->collisionMoveRight(posEnemy, size, false))
+				posEnemy.x -= int(speed);
+			else if (dir < 0 && map->collisionMoveLeft(posEnemy, size, false))
+				posEnemy.x += int(speed);
 		}
 	}
 	else
@@ -265,9 +277,9 @@ void Enemy::chasingPlayer_Silvestre(int deltaTime)
 		if (posEnemy.x < 0)              posEnemy.x = 0;
 		if (posEnemy.x > mapW - spriteSize) posEnemy.x = mapW - spriteSize;
 
-		if (dir > 0 && map->collisionMoveRight(posEnemy, size))
+		if (dir > 0 && map->collisionMoveRight(posEnemy, size, true))
 			posEnemy.x -= int(speed);
-		else if (dir < 0 && map->collisionMoveLeft(posEnemy, size))
+		else if (dir < 0 && map->collisionMoveLeft(posEnemy, size, true))
 			posEnemy.x += int(speed);
 	}
 }
@@ -285,12 +297,12 @@ void Enemy::chasingPlayer_Tasmania(int deltaTime)
 	if (posEnemy.x > mapW - spriteSize) posEnemy.x = mapW - spriteSize;
 
 	bool hitWall = false;
-	if (dir > 0 && map->collisionMoveRight(posEnemy, size))
+	if (dir > 0 && map->collisionMoveRight(posEnemy, size, true))
 	{
 		posEnemy.x -= int(speed);
 		hitWall = true;
 	}
-	else if (dir < 0 && map->collisionMoveLeft(posEnemy, size))
+	else if (dir < 0 && map->collisionMoveLeft(posEnemy, size, true))
 	{
 		posEnemy.x += int(speed);
 		hitWall = true;

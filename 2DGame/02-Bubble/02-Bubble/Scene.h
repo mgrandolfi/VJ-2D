@@ -84,7 +84,8 @@ private:
 	Texture        itemTex;
 	Sprite        *itemSprite;       // world pickups (quad = tileSize)
 	Sprite        *itemHudSprite;    // carried-item icon in HUD (fixed size)
-	Sprite        *keyWorldSprite;   // keys in the level (quad = tileSize)
+	Sprite        *keyWorldSprite;   // keys in the level (smaller than tile for scale)
+	int            keyWorldPixelSize;
 
 	// Spawn position (reset here on respawn)
 	glm::ivec2     spawnPos;

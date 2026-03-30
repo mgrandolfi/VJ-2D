@@ -35,8 +35,11 @@ public:
 	int getMapWidth() const { return mapSize.x; }
 	int getMapHeight() const { return mapSize.y; }
 
-	bool collisionMoveLeft(const glm::ivec2 &pos, const glm::ivec2 &size) const;
-	bool collisionMoveRight(const glm::ivec2 &pos, const glm::ivec2 &size) const;
+	// When blockLadders is true, TILE_LADDER blocks horizontal moves (ground enemies).
+	bool collisionMoveLeft(const glm::ivec2 &pos, const glm::ivec2 &size,
+	                       bool blockLadders = false) const;
+	bool collisionMoveRight(const glm::ivec2 &pos, const glm::ivec2 &size,
+	                        bool blockLadders = false) const;
 	bool collisionMoveDown(const glm::ivec2 &pos, const glm::ivec2 &size, int *posY) const;
 	bool collisionMoveUp(const glm::ivec2 &pos, const glm::ivec2 &size, int *posY) const;
 

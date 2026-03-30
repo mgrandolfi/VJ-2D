@@ -171,7 +171,8 @@ void TileMap::prepareArrays(const glm::vec2 &minCoords, ShaderProgram &program)
 	texCoordLocation = program.bindVertexAttribute("texCoord", 2, 4*sizeof(float), (void *)(2*sizeof(float)));
 }
 
-bool TileMap::collisionMoveLeft(const glm::ivec2 &pos, const glm::ivec2 &size) const
+bool TileMap::collisionMoveLeft(const glm::ivec2 &pos, const glm::ivec2 &size,
+                                bool blockLadders) const
 {
 	int x  = pos.x / tileSize;
 	int y0 = pos.y / tileSize;
@@ -184,13 +185,17 @@ bool TileMap::collisionMoveLeft(const glm::ivec2 &pos, const glm::ivec2 &size) c
 	for (int y = y0; y <= y1; y++)
 	{
 		int tile = map[y * mapSize.x + x];
-		if (tile >= 0 && tile < totalTilesMap && tileBlocksMovement(tileTypeMap[tile]))
+		if (tile < 0 || tile >= totalTilesMap)
+			continue;
+		TileType tt = tileTypeMap[tile];
+		if (tileBlocksMovement(tt) || (blockLadders && tt == TILE_LADDER))
 			return true;
 	}
 	return false;
 }
 
-bool TileMap::collisionMoveRight(const glm::ivec2 &pos, const glm::ivec2 &size) const
+bool TileMap::collisionMoveRight(const glm::ivec2 &pos, const glm::ivec2 &size,
+                                 bool blockLadders) const
 {
 	int x  = (pos.x + size.x - 1) / tileSize;
 	int y0 = pos.y / tileSize;
@@ -203,7 +208,10 @@ bool TileMap::collisionMoveRight(const glm::ivec2 &pos, const glm::ivec2 &size) 
 	for (int y = y0; y <= y1; y++)
 	{
 		int tile = map[y * mapSize.x + x];
-		if (tile >= 0 && tile < totalTilesMap && tileBlocksMovement(tileTypeMap[tile]))
+		if (tile < 0 || tile >= totalTilesMap)
+			continue;
+		TileType tt = tileTypeMap[tile];
+		if (tileBlocksMovement(tt) || (blockLadders && tt == TILE_LADDER))
 			return true;
 	}
 	return false;

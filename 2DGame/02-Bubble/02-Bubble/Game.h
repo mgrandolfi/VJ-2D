@@ -1,6 +1,7 @@
 #ifndef _GAME_INCLUDE
 #define _GAME_INCLUDE
 
+#include <cstdint>
 
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
@@ -18,7 +19,6 @@ enum GameState
 	STATE_MENU,
 	STATE_PLAYING,
 	STATE_PAUSED,
-	STATE_GAME_OVER,
 	STATE_WIN,
 	STATE_INSTRUCTIONS,
 	STATE_CREDITS
@@ -65,6 +65,16 @@ private:
 	void renderUIAt(Texture &tex, float x, float y, float w, float h);
 	void renderColorQuad(float x, float y, float w, float h,
 	                     float r, float g, float b, float a);
+	void renderTexturedRect(Texture &tex, float x, float y, float w, float h,
+	                        float u0, float v0, float u1, float v1);
+	void renderSubrectFitted(Texture &tex, float x, float y, float boxW, float boxH,
+	                         int texW, int texH,
+	                         float px0, float py0, float px1, float py1);
+	void renderBitmapTextCenter(const char *text, float cx, float cy, float pixel,
+	                            float r, float g, float b);
+	float measureBitmapTextWidth(const char *text, float pixel);
+	void drawGlyphRows(const uint8_t *rows, float x, float y, float ps,
+	                   float r, float g, float b);
 
 private:
 	bool bPlay;
@@ -76,25 +86,21 @@ private:
 
 	Scene scene;
 
-	// UI full-screen textures
-	Texture menuTex, gameoverTex, winTex, instructionsTex, pauseTex, creditsTex;
+	Texture menuTex, winTex, instructionsTex, creditsTex;
+	Texture btnPlayTex, btnInstrTex, btnCreditsTex, btnBackTex;
 
-	// Menu button overlays
-	Texture btnPlayTex, btnInstrTex, btnCreditsTex;
-
-	// Shader and geometry for fullscreen quad rendering
 	ShaderProgram uiProgram;
 	GLuint uiVao, uiVbo;
+	GLuint uiRectVao, uiRectVbo;
 	GLint uiPosLoc, uiTexLoc;
 
-	// 1x1 white texture for drawing colored quads
 	GLuint whiteTex;
 
-	// Menu / pause selection
-	int menuSelection;   // 0=Play, 1=Instructions, 2=Credits
-	int pauseSelection;  // 0=Continue, 1=Restart, 2=Exit
+	int menuSelection;
+	int pauseSelection;
 
-	// Last known mouse position (for click detection)
+	bool instrBackHover;
+
 	int mouseX, mouseY;
 };
 
