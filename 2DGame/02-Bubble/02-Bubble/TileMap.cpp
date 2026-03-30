@@ -264,6 +264,7 @@ bool TileMap::collisionMoveUp(const glm::ivec2 &pos, const glm::ivec2 &size, int
 	return false;
 }
 
+
 void TileMap::setTileType(int tile, TileType type)
 {
 	if(tile >= 0 && tile < totalTilesMap)
@@ -296,6 +297,19 @@ bool TileMap::isOnLadder(const glm::ivec2 &pos, const glm::ivec2 &size) const
 	for(int ty = ty0; ty <= ty1; ++ty)
 	{
 		if(tileTypeAt(cx, ty * tileSize + tileSize / 2) == TILE_LADDER)
+			return true;
+	}
+	return false;
+}
+
+bool TileMap::isOnCliff(const glm::ivec2 &pos, const glm::ivec2 &size) const
+{
+	int cx = pos.x + size.x / 2;
+	int ty0 = pos.y / tileSize;
+	int ty1 = (pos.y + size.y - 1) / tileSize;
+	for (int ty = ty0; ty <= ty1; ++ty)
+	{
+		if (tileTypeAt(cx, ty * tileSize + tileSize / 2) == TILE_CLIFF)
 			return true;
 	}
 	return false;

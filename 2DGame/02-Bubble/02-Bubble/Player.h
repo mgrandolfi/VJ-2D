@@ -53,6 +53,7 @@ private:
 
 	// Graphics
 	Texture     spritesheet;
+	Texture     spritesheetFast;   // boots-active sprite
 	Sprite     *sprite;
 	TileMap    *map;
 };

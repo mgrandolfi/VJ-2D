@@ -6,11 +6,45 @@
 
 
 #define SCREEN_X 0
-#define SCREEN_Y 0
+#define SCREEN_Y 16
 
 #define HUD_ICON_SIZE 24.f
 #define HUD_MARGIN    8.f
+
+#define INIT_PLAYER_X_TILES 4
+#define INIT_PLAYER_Y_TILES 3
 #define HUD_SPACING  28.f
+
+// Level 1
+#define L1_PIOLIN_X      16
+#define L1_PIOLIN_Y     3
+#define L1_PIOLIN_RANGE  4   
+
+// Level 2
+#define L2_LUCAS_X     3
+#define L2_LUCAS_Y    13
+#define L2_PIOLIN_X   10
+#define L2_PIOLIN_Y    7
+
+// Level 3
+#define L3_PIOLIN_X    4
+#define L3_PIOLIN_Y   16
+#define L3_SILVESTRE_X 10
+#define L3_SILVESTRE_Y 10
+
+// Level 4
+#define L4_LUCAS_X     3
+#define L4_LUCAS_Y    13
+#define L4_TASMANIA_X 10
+#define L4_TASMANIA_Y  7
+
+// Level 5
+#define L5_SILVESTRE_X  3
+#define L5_SILVESTRE_Y 13
+#define L5_TASMANIA_X  10
+#define L5_TASMANIA_Y   7
+#define L5_LUCAS_X     15
+#define L5_LUCAS_Y      2
 
 
 Scene::Scene()
@@ -119,7 +153,6 @@ void Scene::loadLevel(int level)
 	recreateWorldPickupSprites(map->getTileSize());
 	spawnEntities(level);
 
-	// Pick zoom: 16px-tile levels need more zoom, 32px levels less
 	const int ts = map->getTileSize();
 	if (ts <= 16)
 		camZoom = 2.0f;
@@ -129,10 +162,6 @@ void Scene::loadLevel(int level)
 	camX = 0.f;
 	camY = 0.f;
 }
-
-// ---------------------------------------------------------------------------
-// Map loading + tile-type setup per level
-// ---------------------------------------------------------------------------
 
 void Scene::initMap(int level)
 {
@@ -148,65 +177,52 @@ void Scene::initMap(int level)
 
 	map = TileMap::createTileMap(levelFile, glm::vec2(SCREEN_X, SCREEN_Y), texProgram);
 
+	tileBlocks.clear();
+	tileCliffs.clear();
+	tileLadders.clear();
+	tileDoors.clear();
+	tileJumps.clear();
+	tileWarps.clear();
+	tileElevators.clear();
+
 	if (level == 1)
 	{
-		// Carol's tileset_level1.png (25x14 tilesheet)
-		// Walls and platforms
-		int blockIds[] = {0, 3, 4, 7, 10, 13, 14, 15, 17,
-		                  25, 28, 35, 36, 41, 42, 57, 62, 64, 65, 61, -1};
-		for (int i = 0; blockIds[i] != -1; ++i)
-			map->setTileType(blockIds[i], TILE_BLOCK);
-		// Floor / stone art used as solid ground (tile 1 is common in level_1)
-		map->setTileType(1, TILE_BLOCK);
-		map->setTileType(5, TILE_BLOCK);
-		// Platform tops drawn with these ids — must collide or the player falls through
-		map->setTileType(29, TILE_BLOCK);
-		map->setTileType(30, TILE_BLOCK);
-		map->setTileType(31, TILE_BLOCK);
-		map->setTileType(32, TILE_BLOCK);
-		// Ladders
-		int ladderIds[] = {9, 12, 37, -1};
-		for (int i = 0; ladderIds[i] != -1; ++i)
-			map->setTileType(ladderIds[i], TILE_LADDER);
-		// Door
-		map->setTileType(2, TILE_DOOR);
-		// Tile 6 = spider web — stay pass-through (decoration)
-		int moreBlocks[] = { 8, 16, 26, 27, 33, 34, 38, 39, 40, -1 };
-		for (int i = 0; moreBlocks[i] != -1; ++i)
-			map->setTileType(moreBlocks[i], TILE_BLOCK);
+		tileBlocks    = {0, 3, 4, 7, 10, 13, 14, 15, 28, 37, 42, 62}; // bloques solidos
+		tileCliffs    = {2, 8, 12, 17};                                 // rampas
+		tileLadders   = {9, 34};                                        // plantas / escaleras
+		tileWarps     = {36, 61};                                       // suelo teletransporte
+		tileJumps     = {11};                                           // plataforma up
+		tileElevators = {64, 65};                                       // tunel ascensor
 	}
 	else if (level == 3)
 	{
-		// Carol's tileset_level3.png (30x30 tilesheet)
-		int blockIds[] = {0, 3, 6, 7, 8, 10, 13, 14, 15,
-		                  35, 36, 37, 38, 40, 41, 42, 44,
-		                  66, 67, 68, 69, 71, 72, 73, -1};
-		for (int i = 0; blockIds[i] != -1; ++i)
-			map->setTileType(blockIds[i], TILE_BLOCK);
-		// Ladders
-		int ladderIds[] = {9, 11, 12, 43, 70, -1};
-		for (int i = 0; ladderIds[i] != -1; ++i)
-			map->setTileType(ladderIds[i], TILE_LADDER);
-		// Door
-		map->setTileType(2, TILE_DOOR);
-		// Common floor tiles in level_3 not in blockIds (exclude ladder ids 9,11,12,43,70)
-		int moreBlocks3[] = { 1, 30, 31, 32, 39, 60, 61, 71, 72, -1 };
-		for (int i = 0; moreBlocks3[i] != -1; ++i)
-			map->setTileType(moreBlocks3[i], TILE_BLOCK);
+		tileBlocks  = {0, 3, 6, 7, 8, 10, 13, 14, 15,
+		               35, 36, 37, 38, 40, 41, 42, 44,
+		               66, 67, 68, 69, 71, 72, 73};
+		tileLadders = {9, 11, 12, 43, 70};
+		tileDoors   = {2};
 	}
 	else
 	{
-		// Levels 2/4/5: dungeon 8x2 tilesheet
-		// Solid blocks (multiple visual variants for level variety)
-		map->setTileType(0, TILE_BLOCK);  // plain stone block
-		map->setTileType(1, TILE_BLOCK);  // stone with chain/pipe decoration
-		map->setTileType(9, TILE_BLOCK);  // stone brick (platform floors)
-		// Tile 6 = spider web: TILE_EMPTY (visual decoration only, player passes through)
-		map->setTileType(2, TILE_LADDER);
-		map->setTileType(3, TILE_DOOR);
-		map->setTileType(4, TILE_JUMP);
-		map->setTileType(5, TILE_WARP);
+		tileBlocks  = {0, 1, 9};
+		tileLadders = {2};
+		tileDoors   = {3};
+		tileJumps   = {4};
+		tileWarps   = {5};
 	}
+
+	applyTileTypes();
+}
+
+void Scene::applyTileTypes()
+{
+	for (int id : tileBlocks)    map->setTileType(id, TILE_BLOCK);
+	for (int id : tileCliffs)    map->setTileType(id, TILE_CLIFF);
+	for (int id : tileLadders)   map->setTileType(id, TILE_LADDER);
+	for (int id : tileDoors)     map->setTileType(id, TILE_DOOR);
+	for (int id : tileJumps)     map->setTileType(id, TILE_JUMP);
+	for (int id : tileWarps)     map->setTileType(id, TILE_WARP);
+	for (int id : tileElevators) map->setTileType(id, TILE_ELEVATOR);
 }
 
 void Scene::recreateWorldPickupSprites(int ts)
@@ -221,14 +237,14 @@ void Scene::recreateWorldPickupSprites(int ts)
 		keyWorldPixelSize = ts - 2;
 
 	keyWorldSprite = Sprite::createSprite(glm::ivec2(keyWorldPixelSize, keyWorldPixelSize),
-	                                      glm::vec2(1.f, 1.f), &keyIconTex, &texProgram);
+	                                    glm::vec2(1.f, 1.f), &keyIconTex, &texProgram);
 	keyWorldSprite->setNumberAnimations(1);
 	keyWorldSprite->setAnimationSpeed(0, 1);
 	keyWorldSprite->addKeyframe(0, glm::vec2(0.f, 0.f));
 	keyWorldSprite->changeAnimation(0);
 
 	itemSprite = Sprite::createSprite(glm::ivec2(ts, ts),
-	                                  glm::vec2(0.25f, 1.f), &itemTex, &texProgram);
+	                                glm::vec2(0.25f, 1.f), &itemTex, &texProgram);
 	itemSprite->setNumberAnimations(4);
 	for (int i = 0; i < 4; ++i)
 	{
@@ -238,10 +254,7 @@ void Scene::recreateWorldPickupSprites(int ts)
 	itemSprite->changeAnimation(0);
 }
 
-// ---------------------------------------------------------------------------
-// Spawn player, enemies and items
-// ---------------------------------------------------------------------------
-
+//Spawn de enemigos, objetos...
 void Scene::spawnEntities(int level)
 {
 	const int ts = map->getTileSize();
@@ -267,8 +280,9 @@ void Scene::spawnEntities(int level)
 	switch (level)
 	{
 	case 1:
-		setSpawn(18, 16);
-		spawnEnemy(0, PIOLIN, 4, 16);
+		setSpawn(INIT_PLAYER_X_TILES, INIT_PLAYER_Y_TILES);
+		spawnEnemy(0, PIOLIN, L1_PIOLIN_X, L1_PIOLIN_Y);
+		enemies[0]->setPatrolRange(L1_PIOLIN_RANGE * ts);
 		keysRequired = 3;
 		keys[0] = { glm::ivec2(5  * ts, 14 * ts), false };
 		keys[1] = { glm::ivec2(10 * ts, 10 * ts), false };
@@ -282,8 +296,8 @@ void Scene::spawnEntities(int level)
 
 	case 2:
 		setSpawn(18, 13);
-		spawnEnemy(0, LUCAS,  3, 13);
-		spawnEnemy(1, PIOLIN, 10, 7);
+		spawnEnemy(0, LUCAS,  L2_LUCAS_X,  L2_LUCAS_Y);
+		spawnEnemy(1, PIOLIN, L2_PIOLIN_X, L2_PIOLIN_Y);
 		keysRequired = 3;
 		keys[0] = { glm::ivec2(5  * ts, 13 * ts), false };
 		keys[1] = { glm::ivec2(10 * ts,  7 * ts), false };
@@ -297,8 +311,8 @@ void Scene::spawnEntities(int level)
 
 	case 3:
 		setSpawn(18, 16);
-		spawnEnemy(0, PIOLIN,    4, 16);
-		spawnEnemy(1, SILVESTRE, 10, 10);
+		spawnEnemy(0, PIOLIN,    L3_PIOLIN_X,    L3_PIOLIN_Y);
+		spawnEnemy(1, SILVESTRE, L3_SILVESTRE_X, L3_SILVESTRE_Y);
 		keysRequired = 3;
 		keys[0] = { glm::ivec2(5  * ts, 14 * ts), false };
 		keys[1] = { glm::ivec2(10 * ts, 8  * ts), false };
@@ -312,8 +326,8 @@ void Scene::spawnEntities(int level)
 
 	case 4:
 		setSpawn(18, 13);
-		spawnEnemy(0, LUCAS,    3,  13);
-		spawnEnemy(1, TASMANIA, 10,  7);
+		spawnEnemy(0, LUCAS,    L4_LUCAS_X,    L4_LUCAS_Y);
+		spawnEnemy(1, TASMANIA, L4_TASMANIA_X, L4_TASMANIA_Y);
 		keysRequired = 3;
 		keys[0] = { glm::ivec2(7  * ts, 13 * ts), false };
 		keys[1] = { glm::ivec2(10 * ts,  7 * ts), false };
@@ -327,9 +341,9 @@ void Scene::spawnEntities(int level)
 
 	default: // level 5
 		setSpawn(18, 13);
-		spawnEnemy(0, SILVESTRE, 3,  13);
-		spawnEnemy(1, TASMANIA,  10,  7);
-		spawnEnemy(2, LUCAS,     15,  2);
+		spawnEnemy(0, SILVESTRE, L5_SILVESTRE_X, L5_SILVESTRE_Y);
+		spawnEnemy(1, TASMANIA,  L5_TASMANIA_X,  L5_TASMANIA_Y);
+		spawnEnemy(2, LUCAS,     L5_LUCAS_X,     L5_LUCAS_Y);
 		keysRequired = 3;
 		keys[0] = { glm::ivec2(7  * ts, 13 * ts), false };
 		keys[1] = { glm::ivec2(10 * ts,  7 * ts), false };
@@ -346,7 +360,7 @@ void Scene::spawnEntities(int level)
 // ---------------------------------------------------------------------------
 
 bool Scene::checkCollision(const glm::ivec2 &posA, const glm::ivec2 &posB,
-                           const glm::ivec2 &sizeA, const glm::ivec2 &sizeB) const
+                        const glm::ivec2 &sizeA, const glm::ivec2 &sizeB) const
 {
 	// Inclusive on all edges so touching boxes (no gap) still count as colliding.
 	// This is needed for pickups whose top edge equals the walking player's top edge.
@@ -381,6 +395,7 @@ void Scene::update(int deltaTime)
 
 	const glm::ivec2 playerPos  = player->getPosition();
 	const glm::ivec2 playerSize = player->getSpriteSize();
+
 	const int ts = map->getTileSize();
 	const glm::ivec2 enemySize(ts, ts);
 	const glm::ivec2 pickupSize(ts, ts);
@@ -476,41 +491,11 @@ void Scene::update(int deltaTime)
 		levelComplete = true;
 }
 
-// ---------------------------------------------------------------------------
-
 void Scene::render()
 {
-	// Compute camera: viewport centered on player, clamped to map edges
 	const float mapW = float(map->getMapWidth()  * map->getTileSize());
 	const float mapH = float(map->getMapHeight() * map->getTileSize());
-	const float viewW = 640.f / camZoom;
-	const float viewH = 480.f / camZoom;
-
-	if (player)
-	{
-		glm::ivec2 pp = player->getPosition();
-		glm::ivec2 ps = player->getSpriteSize();
-		camX = float(pp.x + ps.x / 2) - viewW / 2.f;
-		camY = float(pp.y + ps.y / 2) - viewH / 2.f;
-	}
-
-	// Clamp to map edges (or center if map smaller than view)
-	if (mapW <= viewW)
-		camX = (mapW - viewW) / 2.f;
-	else
-	{
-		if (camX < 0.f)          camX = 0.f;
-		if (camX > mapW - viewW) camX = mapW - viewW;
-	}
-	if (mapH <= viewH)
-		camY = (mapH - viewH) / 2.f;
-	else
-	{
-		if (camY < 0.f)          camY = 0.f;
-		if (camY > mapH - viewH) camY = mapH - viewH;
-	}
-
-	projection = glm::ortho(camX, camX + viewW, camY + viewH, camY);
+	projection = glm::ortho(0.f, mapW, mapH, 0.f);
 
 	glm::mat4 modelview = glm::mat4(1.f);
 

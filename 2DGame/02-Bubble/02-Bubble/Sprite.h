@@ -35,6 +35,7 @@ public:
 	int animation() const;
 	
 	void setPosition(const glm::vec2 &pos);
+	void setTexture(Texture *t) { texture = t; }
 
 private:
 	Texture *texture;

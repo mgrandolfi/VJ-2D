@@ -14,7 +14,9 @@ enum TileType
 	TILE_LADDER,
 	TILE_DOOR,
 	TILE_JUMP,
-	TILE_WARP
+	TILE_WARP,
+	TILE_CLIFF,     // ramps / one-way slopes
+	TILE_ELEVATOR   // vertical tunnel (up/down shaft)
 };
 
 class TileMap
@@ -46,6 +48,7 @@ public:
 	// Tile type queries at world pixel positions
 	TileType tileTypeAt(int worldX, int worldY) const;
 	bool isOnLadder(const glm::ivec2 &pos, const glm::ivec2 &size) const;
+	bool isOnCliff(const glm::ivec2 &pos, const glm::ivec2 &size) const;
 	bool isOnDoor(const glm::ivec2 &pos, const glm::ivec2 &size) const;
 	bool isOnJump(const glm::ivec2 &pos, const glm::ivec2 &size) const;
 	bool isOnWarp(const glm::ivec2 &pos, const glm::ivec2 &size) const;

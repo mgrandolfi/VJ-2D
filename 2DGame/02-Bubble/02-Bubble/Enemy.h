@@ -23,6 +23,7 @@ public:
 
 	void setTileMap(TileMap *tileMap);
 	void setPosition(const glm::vec2 &pos);
+	void setPatrolRange(float halfRangePixels);  // how far left/right from spawn
 	void setTarget(const glm::ivec2 &pos) { targetPos = pos; }
 
 	glm::ivec2 getPosition() const { return posEnemy; }
@@ -32,7 +33,7 @@ public:
 private:
 	void patrolMovement(int deltaTime);
 	void chasingPlayer_Lucas(int deltaTime);
-	void chasingPlayer_Silvestre(int deltaTime);
+	void chasingPlayer_Ghost(int deltaTime);
 	void chasingPlayer_Tasmania(int deltaTime);
 
 private:
@@ -58,6 +59,7 @@ private:
 
 	float      climbVy;
 	bool       onLadder;
+	float      posXfrac;  // sub-pixel accumulator for speeds < 1.0
 };
 
 

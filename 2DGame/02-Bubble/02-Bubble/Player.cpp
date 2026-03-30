@@ -10,8 +10,8 @@
 
 #define PLAYER_SPEED        2
 #define BOOST_SPEED         4
-#define JUMP_ANGLE_STEP     4
-#define JUMP_TILES          3      // jump 3 tiles high (screen-consistent)
+#define JUMP_ANGLE_STEP     5
+#define JUMP_TILES          5    
 #define FALL_STEP           4
 #define HURT_INVINCIBLE_MS  1500
 
@@ -66,7 +66,8 @@ void Player::init(const glm::ivec2 &tileMapPos, ShaderProgram &shaderProgram, in
 	hurtTimer   = 0;
 	landAnimTimer = 0;
 
-	spritesheet.loadFromFile("images/bugs.png", TEXTURE_PIXEL_FORMAT_RGBA);
+	spritesheet.loadFromFile("images/characters/bugs.png", TEXTURE_PIXEL_FORMAT_RGBA);
+	spritesheetFast.loadFromFile("images/characters/bugs_fast.png", TEXTURE_PIXEL_FORMAT_RGBA);
 	sprite = Sprite::createSprite(glm::ivec2(spriteSize, spriteSize),
 	                              glm::vec2(0.09f, 0.09f),
 	                              &spritesheet, &shaderProgram);
@@ -176,6 +177,7 @@ void Player::update(int deltaTime)
 
 	if (bootTimer > 0) bootTimer -= deltaTime;
 	if (hurtTimer > 0) hurtTimer -= deltaTime;
+	sprite->setTexture(bootTimer > 0 ? &spritesheetFast : &spritesheet);
 
 	// LAND_* animations loop forever in Sprite — time-limit them
 	if (landAnimTimer > 0)
@@ -195,8 +197,9 @@ void Player::update(int deltaTime)
 	const int mapH  = map->getMapHeight() * map->getTileSize();
 
 	onLadder = map->isOnLadder(posPlayer, size);
+	bool onCliff = map->isOnCliff(posPlayer, size);
 
-	// --- Horizontal movement ---
+	//Moverse derecha a izquierda
 	if (Game::instance().getKey(GLFW_KEY_LEFT))
 	{
 		facing = -1;
@@ -209,6 +212,7 @@ void Player::update(int deltaTime)
 			posPlayer.x += speed;
 			if (!isJumping) sprite->changeAnimation(STAND_LEFT);
 		}
+		if (onCliff) posPlayer.y -= speed;
 	}
 	else if (Game::instance().getKey(GLFW_KEY_RIGHT))
 	{
@@ -222,6 +226,7 @@ void Player::update(int deltaTime)
 			posPlayer.x -= speed;
 			if (!isJumping) sprite->changeAnimation(STAND_RIGHT);
 		}
+		if (onCliff) posPlayer.y -= speed;
 	}
 	else if (!isJumping && !onLadder)
 	{
@@ -231,8 +236,9 @@ void Player::update(int deltaTime)
 			sprite->changeAnimation(STAND_RIGHT);
 	}
 
-	// --- Vertical: ladder climbing ---
-	if (onLadder && !isJumping)
+	//Escalar / cliff
+	if (onCliff && !isJumping) onGround = true; 
+	else if (onLadder && !isJumping)
 	{
 		onGround = false;
 		if (Game::instance().getKey(GLFW_KEY_UP))
@@ -262,7 +268,7 @@ void Player::update(int deltaTime)
 				sprite->changeAnimation(CLIMB);
 		}
 	}
-	// --- Vertical: sine-arc jump + gravity ---
+	//Salto del personaje y caída
 	else
 	{
 		if (isJumping)
@@ -295,11 +301,12 @@ void Player::update(int deltaTime)
 				}
 				else if (jumpAngle > 90)
 				{
+					if (sprite->animation() != LAND_LEFT && sprite->animation() != LAND_RIGHT)
+						sprite->changeAnimation((facing >= 0) ? LAND_RIGHT : LAND_LEFT);
 					if (map->collisionMoveDown(posPlayer, size, &posPlayer.y))
 					{
 						isJumping = false;
 						onGround = true;
-						sprite->changeAnimation((facing >= 0) ? LAND_RIGHT : LAND_LEFT);
 						landAnimTimer = 220;
 					}
 				}
@@ -322,9 +329,8 @@ void Player::update(int deltaTime)
 			{
 				onGround = true;
 
-				// Jump ONLY on JUMP floor tiles with UP key
-				if (Game::instance().getKey(GLFW_KEY_UP) &&
-				    map->isOnJump(posPlayer, size))
+				//Activacion auto. del salto al estar en la tile de salto
+				if (map->isOnJump(posPlayer, size))
 				{
 					isJumping = true;
 					jumpAngle = 0;
@@ -345,15 +351,6 @@ void Player::update(int deltaTime)
 				onGround = true;
 			}
 		}
-	}
-
-	// Warp: teleport across map edges on warp tiles
-	if (map->isOnWarp(posPlayer, size))
-	{
-		if (posPlayer.x <= 1)
-			posPlayer.x = mapW - spriteSize - 2;
-		else if (posPlayer.x >= mapW - spriteSize - 1)
-			posPlayer.x = 2;
 	}
 
 	sprite->setPosition(glm::vec2(float(tileMapDispl.x + posPlayer.x),

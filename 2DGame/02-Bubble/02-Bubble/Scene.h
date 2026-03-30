@@ -2,6 +2,7 @@
 #define _SCENE_INCLUDE
 
 
+#include <vector>
 #include <glm/glm.hpp>
 #include "ShaderProgram.h"
 #include "TileMap.h"
@@ -56,6 +57,7 @@ public:
 
 private:
 	void initMap(int level);
+	void applyTileTypes();
 	void spawnEntities(int level);
 	void recreateWorldPickupSprites(int tileSize);
 	void renderHUD();
@@ -63,6 +65,15 @@ private:
 	                    const glm::ivec2 &sizeA, const glm::ivec2 &sizeB) const;
 
 private:
+	// Tile type classification for the current level (set in initMap per level)
+	std::vector<int> tileBlocks;
+	std::vector<int> tileCliffs;
+	std::vector<int> tileLadders;
+	std::vector<int> tileDoors;
+	std::vector<int> tileJumps;
+	std::vector<int> tileWarps;
+	std::vector<int> tileElevators;
+
 	TileMap       *map;
 	Player        *player;
 	Enemy         *enemies[MAX_ENEMIES];
