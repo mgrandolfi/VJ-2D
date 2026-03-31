@@ -11,14 +11,16 @@
 #define HUD_ICON_SIZE 24.f
 #define HUD_MARGIN    8.f
 
-#define INIT_PLAYER_X_TILES 4
-#define INIT_PLAYER_Y_TILES 3
+#define INIT_PLAYER_X_TILES 17
+#define INIT_PLAYER_Y_TILES 17
 #define HUD_SPACING  28.f
 
 // Level 1
 #define L1_PIOLIN_X      16
-#define L1_PIOLIN_Y     3
-#define L1_PIOLIN_RANGE  4   
+#define L1_PIOLIN_Y       3
+#define L1_PIOLIN_RANGE   4
+#define L1_TASMANIA_X     3
+#define L1_TASMANIA_Y    17
 
 // Level 2
 #define L2_LUCAS_X     3
@@ -56,6 +58,7 @@ Scene::Scene()
 	itemSprite     = NULL;
 	itemHudSprite  = NULL;
 	keyWorldSprite = NULL;
+
 	for (int i = 0; i < MAX_ENEMIES; ++i)
 		enemies[i] = NULL;
 	activeEnemies = 0;
@@ -71,6 +74,7 @@ Scene::~Scene()
 	if (itemSprite)     delete itemSprite;
 	if (itemHudSprite)  delete itemHudSprite;
 	if (keyWorldSprite) delete keyWorldSprite;
+
 	for (int i = 0; i < MAX_ENEMIES; ++i)
 		if (enemies[i]) delete enemies[i];
 }
@@ -142,6 +146,7 @@ void Scene::loadLevel(int level)
 	gameOver               = false;
 	levelComplete          = false;
 	playerEnteringElevator = false;
+	playerWarpingOut       = false;
 	enemiesFrozen          = false;
 	freezeTimer    = 0.f;
 	respawnTimer   = 0.f;
@@ -186,9 +191,9 @@ void Scene::initMap(int level)
 	tileWarps.clear();
 	tileElevators.clear();
 	elevatorPairs.clear();
+	warpTiles.clear();
 
-	if (level == 1)
-	{
+	if (level == 1) {
 		tileBlocks    = {0, 3, 4, 7, 10, 13, 14, 15, 28, 37, 42, 62}; // bloques solidos
 		tileCliffs    = {2, 8, 12, 17};                                 // rampas
 		tileLadders   = {9, 34};                                        // plantas / escaleras
@@ -201,24 +206,40 @@ void Scene::initMap(int level)
 			{ glm::ivec2(6, 11), glm::ivec2(7,  8) },
 			{ glm::ivec2(18,14), glm::ivec2(19,16) }
 		};
+		warpTiles = { glm::ivec2(15, 18), glm::ivec2(17, 7) }; //para poner en qué posición del mapa están los warps (col, row)
 	}
-	else if (level == 3)
-	{
-		tileBlocks  = {0, 3, 6, 7, 8, 10, 13, 14, 15,
-		               35, 36, 37, 38, 40, 41, 42, 44,
-		               66, 67, 68, 69, 71, 72, 73};
-		tileLadders = {9, 11, 12, 43, 70};
-		tileDoors   = {2};
+	else if (level == 2) {
+		tileBlocks  = {0, 3, 4, 5, 6, 7, 21, 24, 46, 48, 49};
+		tileLadders = {51,30};
+		tileCliffs  = {42, 44};
+		tileElevators = {47, 8, 9};
+		// tileDoors   = {2};
 	}
-	else
-	{
-		tileBlocks  = {0, 1, 9};
-		tileLadders = {2};
-		tileDoors   = {3};
-		tileJumps   = {4};
-		tileWarps   = {5};
+	else if (level == 3) {
+		tileBlocks  = {0, 3, 6, 7, 8, 10, 13, 30, 31, 33, 35, 41, 42, 44, 45, 64, 70, 71, 72, 73};
+		tileLadders = {39};
+		// tileDoors   = {2};
+		tileJumps   = {2};
+		tileWarps   = {69};
+		tileCliffs  = {4, 5, 11, 12, 14, 15, 46};
+		tileElevators = {66, 67, 68};
+		warpTiles = { glm::ivec2(19, 14), glm::ivec2(15, 12) };
 	}
-
+	else if (level == 4) {
+		// tileBlocks  = {0, 1, 9};
+		// tileLadders = {2};
+		// tileDoors   = {3};
+		// tileJumps   = {4};
+		// tileWarps   = {5};
+	}
+	else if (level == 5) {
+		// tileBlocks  = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14,
+		// 			15, 16, 17, 18, 19, 20, 21, 22, 23};
+		// tileLadders = {24};
+		// tileDoors   = {25};
+		// tileJumps   = {26};
+		// tileWarps   = {27};
+	}
 	applyTileTypes();
 }
 
@@ -291,6 +312,7 @@ void Scene::spawnEntities(int level)
 		setSpawn(INIT_PLAYER_X_TILES, INIT_PLAYER_Y_TILES);
 		spawnEnemy(0, PIOLIN, L1_PIOLIN_X, L1_PIOLIN_Y);
 		enemies[0]->setPatrolRange(L1_PIOLIN_RANGE * ts);
+		spawnEnemy(1, TASMANIA, L1_TASMANIA_X, L1_TASMANIA_Y);
 		keysRequired = 3;
 		keys[0] = { glm::ivec2(5  * ts, 14 * ts), false };
 		keys[1] = { glm::ivec2(10 * ts, 10 * ts), false };
@@ -365,20 +387,14 @@ void Scene::spawnEntities(int level)
 	}
 }
 
-// ---------------------------------------------------------------------------
-
 bool Scene::checkCollision(const glm::ivec2 &posA, const glm::ivec2 &posB,
                         const glm::ivec2 &sizeA, const glm::ivec2 &sizeB) const
 {
-	// Inclusive on all edges so touching boxes (no gap) still count as colliding.
-	// This is needed for pickups whose top edge equals the walking player's top edge.
 	return (posA.x <= posB.x + sizeB.x &&
 	        posA.x + sizeA.x >= posB.x &&
 	        posA.y <= posB.y + sizeB.y &&
 	        posA.y + sizeA.y >= posB.y);
 }
-
-// ---------------------------------------------------------------------------
 
 void Scene::update(int deltaTime)
 {
@@ -406,7 +422,7 @@ void Scene::update(int deltaTime)
 
 	const int ts = map->getTileSize();
 
-	// --- Elevator ---
+	//FIXME - Gestion de ascensores
 	if (playerEnteringElevator && !player->isEnteringElevator())
 	{
 		// ENTER animation done → teleport and play EXIT
@@ -444,28 +460,49 @@ void Scene::update(int deltaTime)
 		}
 	}
 
+	//Teletransporte
+	if (playerWarpingOut && !player->isWarpDisappearing()) {
+		player->startWarpAppear(warpDestPos);
+		playerWarpingOut = false;
+	}
+	else if (warpTiles.size() == 2 && !player->isWarping()) {
+		glm::ivec2 belowTile(
+			(playerPos.x + playerSize.x / 2) / ts,
+			(playerPos.y + playerSize.y) / ts
+		);
+		if (Game::instance().getKey(GLFW_KEY_UP) || Game::instance().getKey(GLFW_KEY_DOWN)) {
+			for (int i = 0; i < 2; ++i) {
+				if (belowTile == warpTiles[i]) {
+					int dest = 1 - i;
+					warpDestPos = glm::ivec2(
+						warpTiles[dest].x * ts,
+						warpTiles[dest].y * ts - ts
+					);
+					player->startWarpDisappear();
+					playerWarpingOut = true;
+					break;
+				}
+			}
+		}
+	}
+
 	const glm::ivec2 enemySize(ts, ts);
 	const glm::ivec2 pickupSize(ts, ts);
 
-	for (int i = 0; i < activeEnemies; ++i)
-	{
+	for (int i = 0; i < activeEnemies; ++i) {
 		if (!enemies[i]->isAlive()) continue;
 
 		enemies[i]->setTarget(playerPos);
-		if (!enemiesFrozen)
-			enemies[i]->update(deltaTime);
+		if (!enemiesFrozen) enemies[i]->update(deltaTime);
 
 		glm::ivec2 pHitPos = playerPos;
 		glm::ivec2 pHitSize = playerSize;
-		if (map->isOnLadder(pHitPos, pHitSize))
-		{
+		if (map->isOnLadder(pHitPos, pHitSize)) {
 			pHitPos.x -= 6;
 			pHitSize.x += 12;
 		}
 
-		if (!player->isGodMode() && !player->isHurt() &&
-		    checkCollision(pHitPos, enemies[i]->getPosition(), pHitSize, enemySize))
-		{
+		if (!player->isGodMode() && !player->isHurt() && checkCollision(pHitPos, enemies[i]->getPosition(), pHitSize, enemySize)) {
 			player->dies();
 			if (player->getLives() <= 0)
 				gameOver = true;
@@ -474,33 +511,26 @@ void Scene::update(int deltaTime)
 		}
 	}
 
-	for (int i = 0; i < itemCount; ++i)
-	{
+	for (int i = 0; i < itemCount; ++i) {
 		if (items[i].collected) continue;
-		if (checkCollision(playerPos, items[i].pos, playerSize, pickupSize))
-		{
+		if (checkCollision(playerPos, items[i].pos, playerSize, pickupSize)) {
 			items[i].collected = true;
 			hasItem     = true;
 			carriedItem = items[i].type;
 		}
 	}
 
-	for (int i = 0; i < keysRequired; ++i)
-	{
+	for (int i = 0; i < keysRequired; ++i) {
 		if (keys[i].collected) continue;
-		if (checkCollision(playerPos, keys[i].pos, playerSize, pickupSize))
-		{
+		if (checkCollision(playerPos, keys[i].pos, playerSize, pickupSize)) {
 			keys[i].collected = true;
 			keysCollected++;
 		}
 	}
 
-	// Use carried item (Z key)
-	if (hasItem && Game::instance().getKey(GLFW_KEY_Z))
-	{
+	if (hasItem && Game::instance().getKey(GLFW_KEY_Z)) {
 		hasItem = false;
-		switch (carriedItem)
-		{
+		switch (carriedItem) {
 		case ITEM_CLOCK:
 			enemiesFrozen = true;
 			freezeTimer   = 5000.f;
@@ -511,8 +541,7 @@ void Scene::update(int deltaTime)
 			break;
 
 		case ITEM_BOMB:
-			for (int i = 0; i < activeEnemies; ++i)
-			{
+			for (int i = 0; i < activeEnemies; ++i) {
 				if (!enemies[i]->isAlive()) continue;
 				glm::ivec2 diff = enemies[i]->getPosition() - playerPos;
 				if (abs(diff.x) < 3 * ts && abs(diff.y) < 3 * ts)
@@ -521,8 +550,7 @@ void Scene::update(int deltaTime)
 			break;
 
 		case ITEM_WEIGHT:
-			for (int i = 0; i < activeEnemies; ++i)
-			{
+			for (int i = 0; i < activeEnemies; ++i) {
 				if (!enemies[i]->isAlive()) continue;
 				glm::ivec2 ePos = enemies[i]->getPosition();
 				int dx = abs(ePos.x - playerPos.x);
@@ -534,8 +562,7 @@ void Scene::update(int deltaTime)
 		}
 	}
 
-	if (keysCollected >= keysRequired && map->isOnDoor(playerPos, playerSize))
-		levelComplete = true;
+	if (keysCollected >= keysRequired && map->isOnDoor(playerPos, playerSize)) levelComplete = true;
 }
 
 void Scene::render()
@@ -555,9 +582,8 @@ void Scene::render()
 	map->render();
 
 	const int ts = map->getTileSize();
-	// Render uncollected keys in the world
-	for (int i = 0; i < keysRequired; ++i)
-	{
+	
+	for (int i = 0; i < keysRequired; ++i) {
 		if (keys[i].collected) continue;
 		texProgram.setUniform4f("color", 1.f, 1.f, 0.f, 1.f);
 		glm::ivec2 off((ts - keyWorldPixelSize) / 2, (ts - keyWorldPixelSize) / 2);
@@ -566,9 +592,7 @@ void Scene::render()
 	}
 	texProgram.setUniform4f("color", 1.f, 1.f, 1.f, 1.f);
 
-	// Render uncollected items in the world
-	for (int i = 0; i < itemCount; ++i)
-	{
+	for (int i = 0; i < itemCount; ++i) {
 		if (items[i].collected) continue;
 		itemSprite->changeAnimation(int(items[i].type));
 		itemSprite->setPosition(glm::vec2(items[i].pos));
@@ -639,6 +663,7 @@ void Scene::renderHUD()
 		texProgram.setUniform4f("color", 0.f, 1.f, 0.f, 0.7f);
 		heartSprite->setPosition(glm::vec2(640.f - HUD_MARGIN - HUD_ICON_SIZE, HUD_MARGIN));
 		heartSprite->render();
+		//NOTE - añadir sprite the arco brillante o algo para que se note mejor el modo dios, el corazon verde no se ve muy bien
 	}
 
 	texProgram.setUniform4f("color", 1.f, 1.f, 1.f, 1.f);

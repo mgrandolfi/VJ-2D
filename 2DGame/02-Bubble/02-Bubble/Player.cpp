@@ -19,7 +19,7 @@
 enum PlayerAnims
 {
 	STAND_LEFT, STAND_RIGHT, MOVE_LEFT, MOVE_RIGHT,
-	STAND_FRONT, CLIMB, ENTER, EXIT, DISAPPEAR,
+	STAND_FRONT, CLIMB, ENTER, EXIT, DISAPPEAR, APPEAR,
 	START_JUMP_LEFT, START_JUMP_RIGHT,
 	JUMP_LEFT, JUMP_RIGHT, LAND_LEFT, LAND_RIGHT,
 	DIE_LEFT, DIE_RIGHT, BOMB_LEFT, BOMB_RIGHT,
@@ -46,6 +46,9 @@ Player::Player()
 	elevatorEntering = false;
 	elevatorExiting  = false;
 	elevatorTimer    = 0.f;
+	warpDisappearing = false;
+	warpAppearing    = false;
+	warpTimer        = 0.f;
 }
 
 Player::~Player()
@@ -119,6 +122,11 @@ void Player::init(const glm::ivec2 &tileMapPos, ShaderProgram &shaderProgram, in
 	sprite->addKeyframe(DISAPPEAR, glm::vec2(0.6f, 0.0f));
 	sprite->addKeyframe(DISAPPEAR, glm::vec2(0.7f, 0.0f));
 
+	sprite->setAnimationSpeed(APPEAR, 3);
+	sprite->addKeyframe(APPEAR, glm::vec2(0.7f, 0.0f));
+	sprite->addKeyframe(APPEAR, glm::vec2(0.6f, 0.0f));
+	sprite->addKeyframe(APPEAR, glm::vec2(0.5f, 0.0f));
+
 	sprite->setAnimationSpeed(START_JUMP_LEFT, 2);
 	sprite->addKeyframe(START_JUMP_LEFT, glm::vec2(0.7f, 0.4f));
 
@@ -186,6 +194,26 @@ void Player::startElevatorEnter()
 	sprite->changeAnimation(ENTER);
 }
 
+void Player::startWarpDisappear()
+{
+	warpDisappearing = true;
+	warpAppearing    = false;
+	warpTimer        = 500.f;
+	isJumping        = false;
+	sprite->changeAnimation(DISAPPEAR);
+}
+
+void Player::startWarpAppear(const glm::ivec2 &destPos)
+{
+	posPlayer        = destPos;
+	warpDisappearing = false;
+	warpAppearing    = true;
+	warpTimer        = 500.f;
+	sprite->changeAnimation(APPEAR);
+	sprite->setPosition(glm::vec2(float(tileMapDispl.x + posPlayer.x),
+	                              float(tileMapDispl.y + posPlayer.y)));
+}
+
 void Player::startElevatorExit(const glm::ivec2 &exitPos)
 {
 	posPlayer       = exitPos;
@@ -209,6 +237,20 @@ void Player::update(int deltaTime)
 		{
 			if (elevatorEntering) elevatorEntering = false;  // Scene calls startElevatorExit
 			else                  elevatorExiting  = false;  // resume normal
+		}
+		sprite->setPosition(glm::vec2(float(tileMapDispl.x + posPlayer.x),
+		                              float(tileMapDispl.y + posPlayer.y)));
+		return;
+	}
+
+	// Warp transition: only update animation, block all movement
+	if (warpDisappearing || warpAppearing)
+	{
+		warpTimer -= deltaTime;
+		if (warpTimer <= 0.f)
+		{
+			if (warpDisappearing) warpDisappearing = false;  // Scene calls startWarpAppear
+			else                  warpAppearing    = false;  // resume normal
 		}
 		sprite->setPosition(glm::vec2(float(tileMapDispl.x + posPlayer.x),
 		                              float(tileMapDispl.y + posPlayer.y)));

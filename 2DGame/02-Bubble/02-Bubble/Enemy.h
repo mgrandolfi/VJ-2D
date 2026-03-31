@@ -58,7 +58,12 @@ private:
 
 	float      climbVy;
 	bool       onLadder;
-	float      posXfrac;  // sub-pixel accumulator for speeds < 1.0
+	float      posXfrac;     // sub-pixel x accumulator
+	float      tornadoYfrac; // sub-pixel y accumulator (Tasmania tornado)
+
+	// Tasmania state machine
+	enum TasmaniaState { TAS_IDLE, TAS_TORNADO, TAS_WALK };
+	TasmaniaState tasState;
 };
 
 

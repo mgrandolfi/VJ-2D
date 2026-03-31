@@ -36,6 +36,11 @@ public:
 	bool isExitingElevator()  const { return elevatorExiting;  }
 	bool isInElevator()       const { return elevatorEntering || elevatorExiting; }
 
+	void startWarpDisappear();
+	void startWarpAppear(const glm::ivec2 &destPos);
+	bool isWarpDisappearing() const { return warpDisappearing; }
+	bool isWarping()          const { return warpDisappearing || warpAppearing; }
+
 private:
 	glm::ivec2  tileMapDispl, posPlayer;
 	int         spriteSize;      // world-unit size (= tileSize)
@@ -61,6 +66,11 @@ private:
 	bool        elevatorEntering;
 	bool        elevatorExiting;
 	float       elevatorTimer;
+
+	// Warp state
+	bool        warpDisappearing;
+	bool        warpAppearing;
+	float       warpTimer;
 
 	// Graphics
 	Texture     spritesheet;

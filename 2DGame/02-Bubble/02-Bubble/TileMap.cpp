@@ -10,7 +10,7 @@ using namespace std;
 // Solid for movement (jump pads must be walkable, not only decorative)
 static bool tileBlocksMovement(TileType t)
 {
-	return t == TILE_BLOCK || t == TILE_JUMP || t == TILE_ELEVATOR;
+	return t == TILE_BLOCK || t == TILE_JUMP || t == TILE_ELEVATOR || t == TILE_WARP;
 }
 
 

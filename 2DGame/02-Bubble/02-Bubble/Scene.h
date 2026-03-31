@@ -81,6 +81,7 @@ private:
 	std::vector<int> tileWarps;
 	std::vector<int>          tileElevators;   // tile IDs to mark as TILE_ELEVATOR (still used for applyTileTypes)
 	std::vector<ElevatorPair> elevatorPairs;   // explicit entry/exit positions per level
+	std::vector<glm::ivec2>   warpTiles;       // (col, row) positions of the 2 warp floors per level
 
 	TileMap       *map;
 	Player        *player;
@@ -116,6 +117,10 @@ private:
 	// Elevator state
 	bool           playerEnteringElevator;
 	glm::ivec2     elevatorExitPos;
+
+	// Warp state
+	bool           playerWarpingOut;
+	glm::ivec2     warpDestPos;
 	bool           enemiesFrozen;
 	float          freezeTimer;
 	float          respawnTimer;   // countdown after death before respawning

@@ -8,12 +8,16 @@
 
 #define ENEMY_FALL 4
 
+#define TAS_DETECT_TILES 12   // tiles away before Tasmania notices the player
+#define TAS_STOP_TILES    5   // tiles away to stop tornado and switch to walk
+#define TAS_WALK_SPEED   2.0f // px/frame when walking
+
 
 enum EnemyAnims
 {
 	WALK_RIGHT, WALK_LEFT, STAND_RIGHT, STAND_LEFT,
 	WALK_FRONT, WALK_BEHIND, LAND_RIGHT, LAND_LEFT,
-	DISAPPEAR, TORNADO      
+	STAND_FRONT, STAND_BEHIND, DISAPPEAR, TORNADO      
 };
 
 Enemy::Enemy()
@@ -42,9 +46,11 @@ void Enemy::init(const glm::ivec2 &tileMapPos, ShaderProgram &shaderProgram,
 	timeWait   = 0.f;
 	steps      = 0;
 	maxSteps   = 400;
-	climbVy    = 0.f;
-	onLadder   = false;
-	posXfrac   = 0.f;
+	climbVy      = 0.f;
+	onLadder     = false;
+	posXfrac     = 0.f;
+	tornadoYfrac = 0.f;
+	tasState     = TAS_IDLE;
 
 	switch (type)
 	{
@@ -66,54 +72,48 @@ void Enemy::init(const glm::ivec2 &tileMapPos, ShaderProgram &shaderProgram,
 	sprite = Sprite::createSprite(glm::ivec2(spriteSize, spriteSize),
 	                            glm::vec2(0.1f, 0.1f),
 	                            &spritesheet, &shaderProgram);
-	sprite->setNumberAnimations(10);
+	sprite->setNumberAnimations(12);
 
 	if (type == TASMANIA)
 	{
 		sprite->setAnimationSpeed(WALK_RIGHT, 6);
-		sprite->addKeyframe(WALK_RIGHT, glm::vec2(0.0f, 0.0f));
-		sprite->addKeyframe(WALK_RIGHT, glm::vec2(0.1f, 0.0f));
+		sprite->addKeyframe(WALK_RIGHT, glm::vec2(0.7f, 0.0f));
+		sprite->addKeyframe(WALK_RIGHT, glm::vec2(0.8f, 0.0f));
 		sprite->addKeyframe(WALK_RIGHT, glm::vec2(0.2f, 0.0f));
-		sprite->addKeyframe(WALK_RIGHT, glm::vec2(0.3f, 0.0f));
-		sprite->addKeyframe(WALK_RIGHT, glm::vec2(0.4f, 0.0f));
+		sprite->addKeyframe(WALK_RIGHT, glm::vec2(0.0f, 0.0f));
+		sprite->addKeyframe(WALK_RIGHT, glm::vec2(0.2f, 0.0f));
+		sprite->addKeyframe(WALK_RIGHT, glm::vec2(0.8f, 0.0f));
+		sprite->addKeyframe(WALK_RIGHT, glm::vec2(0.7f, 0.0f));
 
 		sprite->setAnimationSpeed(WALK_LEFT, 6);
-		sprite->addKeyframe(WALK_LEFT, glm::vec2(0.0f, 0.1f));
-		sprite->addKeyframe(WALK_LEFT, glm::vec2(0.1f, 0.1f));
 		sprite->addKeyframe(WALK_LEFT, glm::vec2(0.2f, 0.1f));
-		sprite->addKeyframe(WALK_LEFT, glm::vec2(0.3f, 0.1f));
-		sprite->addKeyframe(WALK_LEFT, glm::vec2(0.4f, 0.1f));
+		sprite->addKeyframe(WALK_LEFT, glm::vec2(0.1f, 0.1f));
+		sprite->addKeyframe(WALK_LEFT, glm::vec2(0.7f, 0.1f));
+		sprite->addKeyframe(WALK_LEFT, glm::vec2(0.9f, 0.1f));
+		sprite->addKeyframe(WALK_LEFT, glm::vec2(0.7f, 0.1f));
+		sprite->addKeyframe(WALK_LEFT, glm::vec2(0.1f, 0.1f));
+		sprite->addKeyframe(WALK_RIGHT, glm::vec2(0.2f, 0.1f));
 
 		sprite->setAnimationSpeed(STAND_RIGHT, 1);
-		sprite->addKeyframe(STAND_RIGHT, glm::vec2(0.0f, 0.0f));
+		sprite->addKeyframe(STAND_RIGHT, glm::vec2(0.1f, 0.0f));
 
 		sprite->setAnimationSpeed(STAND_LEFT, 1);
-		sprite->addKeyframe(STAND_LEFT, glm::vec2(0.0f, 0.1f));
+		sprite->addKeyframe(STAND_LEFT, glm::vec2(0.8f, 0.1f));
 
-		sprite->setAnimationSpeed(WALK_FRONT, 1);
-		sprite->addKeyframe(WALK_FRONT, glm::vec2(0.0f, 0.0f)); 
+		sprite->setAnimationSpeed(STAND_FRONT, 1);
+		sprite->addKeyframe(STAND_FRONT, glm::vec2(0.0f, 0.1f)); 
 
-		sprite->setAnimationSpeed(WALK_BEHIND, 1);
-		sprite->addKeyframe(WALK_BEHIND, glm::vec2(0.0f, 0.0f));
-		sprite->setAnimationSpeed(LAND_RIGHT, 1);
-		sprite->addKeyframe(LAND_RIGHT, glm::vec2(0.0f, 0.0f)); 
-
-		sprite->setAnimationSpeed(LAND_LEFT, 1);
-		sprite->addKeyframe(LAND_LEFT, glm::vec2(0.0f, 0.1f)); 
-
-		sprite->setAnimationSpeed(DISAPPEAR, 6);
-		sprite->addKeyframe(DISAPPEAR, glm::vec2(0.0f, 0.8f)); 
-		sprite->addKeyframe(DISAPPEAR, glm::vec2(0.1f, 0.8f));
-		sprite->addKeyframe(DISAPPEAR, glm::vec2(0.2f, 0.8f));
-		sprite->addKeyframe(DISAPPEAR, glm::vec2(0.3f, 0.8f));
-		sprite->addKeyframe(DISAPPEAR, glm::vec2(0.4f, 0.8f));
+		sprite->setAnimationSpeed(STAND_BEHIND, 1);
+		sprite->addKeyframe(STAND_BEHIND, glm::vec2(0.4f, 0.1f));
 
 		sprite->setAnimationSpeed(TORNADO, 8);
-		sprite->addKeyframe(TORNADO, glm::vec2(0.0f, 0.0f)); 
-		sprite->addKeyframe(TORNADO, glm::vec2(0.1f, 0.0f));
-		sprite->addKeyframe(TORNADO, glm::vec2(0.2f, 0.0f));
-		sprite->addKeyframe(TORNADO, glm::vec2(0.3f, 0.0f));
-		sprite->addKeyframe(TORNADO, glm::vec2(0.4f, 0.0f));
+		sprite->addKeyframe(TORNADO, glm::vec2(0.0f, 0.3f)); 
+		sprite->addKeyframe(TORNADO, glm::vec2(0.1f, 0.3f));
+		sprite->addKeyframe(TORNADO, glm::vec2(0.2f, 0.3f));
+		sprite->addKeyframe(TORNADO, glm::vec2(0.3f, 0.3f));
+		sprite->addKeyframe(TORNADO, glm::vec2(0.4f, 0.3f));
+		sprite->addKeyframe(TORNADO, glm::vec2(0.5f, 0.3f));
+		sprite->addKeyframe(TORNADO, glm::vec2(0.6f, 0.3f));
 	}
 	else if (type == LUCAS)
 	{
@@ -219,14 +219,15 @@ void Enemy::update(int deltaTime)
 
 	switch (type)
 	{
-	case PIOLIN && GHOST:    
-		patrolMovement(deltaTime);          
+	case PIOLIN:
+	case GHOST:
+		patrolMovement(deltaTime);
 		break;
-	case LUCAS:     
-		chasingPlayer_Lucas(deltaTime);    
+	case LUCAS:
+		chasingPlayer_Lucas(deltaTime);
 		break;
-	case TASMANIA:  
-		chasingPlayer_Tasmania(deltaTime); 
+	case TASMANIA:
+		chasingPlayer_Tasmania(deltaTime);
 		break;
 	}
 
@@ -353,5 +354,80 @@ void Enemy::chasingPlayer_Lucas(int deltaTime)
 
 void Enemy::chasingPlayer_Tasmania(int deltaTime)
 {
+	const float ts   = (float)spriteSize;
+	const float dx   = (float)(targetPos.x - posEnemy.x);
+	const float dy   = (float)(targetPos.y - posEnemy.y);
+	const float dist = sqrtf(dx * dx + dy * dy);
 
+	// --- Idle: player not detected ---
+	if (dist > TAS_DETECT_TILES * ts)
+	{
+		if (tasState != TAS_IDLE)
+		{
+			tasState = TAS_IDLE;
+			sprite->changeAnimation(STAND_FRONT);
+		}
+		return;
+	}
+
+	// --- Tornado: fly diagonally toward player, ignoring all blocks ---
+	if (dist > TAS_STOP_TILES * ts)
+	{
+		if (tasState != TAS_TORNADO)
+		{
+			tasState     = TAS_TORNADO;
+			tornadoYfrac = 0.f;
+			posXfrac     = 0.f;
+			sprite->changeAnimation(TORNADO);
+		}
+		float nx = dx / dist;
+		float ny = dy / dist;
+
+		posXfrac     += nx * speed;
+		tornadoYfrac += ny * speed;
+		int stepX = (int)posXfrac;
+		int stepY = (int)tornadoYfrac;
+		posXfrac     -= (float)stepX;
+		tornadoYfrac -= (float)stepY;
+		posEnemy.x   += stepX;
+		posEnemy.y   += stepY;
+		return;
+	}
+
+	// --- Walk: close to player, respect gravity and collisions ---
+	if (tasState != TAS_WALK)
+	{
+		tasState = TAS_WALK;
+		posXfrac = 0.f;
+	}
+
+	const glm::ivec2 size(spriteSize, spriteSize);
+	applyGravity(posEnemy, map, spriteSize);
+
+	dir = (dx > 0.f) ? 1.f : -1.f;
+	posXfrac += dir * TAS_WALK_SPEED;
+	int step  = (int)posXfrac;
+	posXfrac -= (float)step;
+	posEnemy.x += step;
+
+	if (dir > 0.f)
+	{
+		if (map->collisionMoveRight(posEnemy, size, true))
+		{
+			posEnemy.x -= step;
+			posXfrac = 0.f;
+		}
+		if (sprite->animation() != WALK_RIGHT)
+			sprite->changeAnimation(WALK_RIGHT);
+	}
+	else
+	{
+		if (map->collisionMoveLeft(posEnemy, size, true))
+		{
+			posEnemy.x -= step;
+			posXfrac = 0.f;
+		}
+		if (sprite->animation() != WALK_LEFT)
+			sprite->changeAnimation(WALK_LEFT);
+	}
 }

@@ -2,7 +2,7 @@ TILEMAP
 20 20 					    -- Size of tile map in tiles
 16 16						-- Tile size & block size
 images/tilesets/tileset_level2.png 	-- Tilesheet
-20 14					    -- Number of tiles in tilesheet
+21 15					    -- Number of tiles in tilesheet
 0  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  0
 21 52 52 52 52 52 52 52 52 52 52 52 52 52 52 52 52 52 52 21
 21 50 50 31 50 50 31 50 50 31 50 50 31 50 50 31 50 50 1  21
