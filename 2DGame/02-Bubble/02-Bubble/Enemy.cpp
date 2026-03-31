@@ -1,16 +1,24 @@
 #include <cmath>
 #include <cstdlib>
 #include <iostream>
+#include <algorithm>
 #include <GL/glew.h>
 #include "Enemy.h"
 #include "Game.h"
 
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
 
 #define ENEMY_FALL 4
 
 #define TAS_DETECT_TILES 12   // tiles away before Tasmania notices the player
 #define TAS_STOP_TILES    5   // tiles away to stop tornado and switch to walk
 #define TAS_WALK_SPEED   2.0f // px/frame when walking
+
+#define LUC_DETECT_TILES  5   // detection radius in tiles
+#define LUC_JUMP_TILES    5   // jump height in tiles (matches player)
+#define LUC_JUMP_STEP     5   // angle step per frame
 
 
 enum EnemyAnims
@@ -22,11 +30,16 @@ enum EnemyAnims
 
 Enemy::Enemy()
 {
-	sprite     = NULL;
-	map        = NULL;
-	alive      = true;
-	spriteSize = 32;
-	posXfrac   = 0.f;
+	sprite        = NULL;
+	map           = NULL;
+	alive         = true;
+	spriteSize    = 32;
+	posXfrac      = 0.f;
+	tornadoYfrac = 0.f;
+	tasState     = TAS_IDLE;
+	lucIsJumping = false;
+	lucJumpAngle = 0;
+	lucStartY    = 0;
 }
 
 Enemy::~Enemy()
@@ -46,19 +59,22 @@ void Enemy::init(const glm::ivec2 &tileMapPos, ShaderProgram &shaderProgram,
 	timeWait   = 0.f;
 	steps      = 0;
 	maxSteps   = 400;
-	climbVy      = 0.f;
-	onLadder     = false;
-	posXfrac     = 0.f;
-	tornadoYfrac = 0.f;
+	climbVy       = 0.f;
+	onLadder      = false;
+	posXfrac      = 0.f;
+	tornadoYfrac  = 0.f;
 	tasState     = TAS_IDLE;
+	lucIsJumping = false;
+	lucJumpAngle = 0;
+	lucStartY    = 0;
 
 	switch (type)
 	{
 	case PIOLIN:    
 		speed = 0.7f; 
 		break;
-	case LUCAS:     
-		speed = 2.0f; 
+	case LUCAS:
+		speed = 0.8f;
 		break;
 	case GHOST: 
 		speed = 1.0f; 
@@ -118,43 +134,48 @@ void Enemy::init(const glm::ivec2 &tileMapPos, ShaderProgram &shaderProgram,
 	else if (type == LUCAS)
 	{
 		sprite->setAnimationSpeed(WALK_RIGHT, 6);
-		sprite->addKeyframe(WALK_RIGHT, glm::vec2(0.0f, 0.2f));
-		sprite->addKeyframe(WALK_RIGHT, glm::vec2(0.1f, 0.2f));
-		sprite->addKeyframe(WALK_RIGHT, glm::vec2(0.2f, 0.2f));
-		sprite->addKeyframe(WALK_RIGHT, glm::vec2(0.3f, 0.2f));
-		sprite->addKeyframe(WALK_RIGHT, glm::vec2(0.4f, 0.2f));
+		sprite->addKeyframe(WALK_RIGHT, glm::vec2(0.0f, 0.3f));
+		sprite->addKeyframe(WALK_RIGHT, glm::vec2(0.1f, 0.3f));
+		sprite->addKeyframe(WALK_RIGHT, glm::vec2(0.2f, 0.3f));
+		sprite->addKeyframe(WALK_RIGHT, glm::vec2(0.3f, 0.3f));
 
 		sprite->setAnimationSpeed(WALK_LEFT, 6);
-		sprite->addKeyframe(WALK_LEFT, glm::vec2(0.0f, 0.3f));
-		sprite->addKeyframe(WALK_LEFT, glm::vec2(0.1f, 0.3f));
-		sprite->addKeyframe(WALK_LEFT, glm::vec2(0.2f, 0.3f));
-		sprite->addKeyframe(WALK_LEFT, glm::vec2(0.3f, 0.3f));
-		sprite->addKeyframe(WALK_LEFT, glm::vec2(0.4f, 0.3f));
+		sprite->addKeyframe(WALK_LEFT, glm::vec2(0.9f, 0.4f));
+		sprite->addKeyframe(WALK_LEFT, glm::vec2(0.8f, 0.4f));
+		sprite->addKeyframe(WALK_LEFT, glm::vec2(0.6f, 0.4f));
+		sprite->addKeyframe(WALK_LEFT, glm::vec2(0.5f, 0.4f));
 
 		sprite->setAnimationSpeed(STAND_RIGHT, 1);
-		sprite->addKeyframe(STAND_RIGHT, glm::vec2(0.0f, 0.2f));
+		sprite->addKeyframe(STAND_RIGHT, glm::vec2(0.1f, 0.3f));
 
 		sprite->setAnimationSpeed(STAND_LEFT, 1);
-		sprite->addKeyframe(STAND_LEFT, glm::vec2(0.0f, 0.3f));
+		sprite->addKeyframe(STAND_LEFT, glm::vec2(0.8f, 0.4f));
 
-		sprite->setAnimationSpeed(WALK_FRONT, 1);
-		sprite->addKeyframe(WALK_FRONT, glm::vec2(0.0f, 0.2f)); 
+		sprite->setAnimationSpeed(WALK_FRONT, 3);
+		sprite->addKeyframe(WALK_FRONT, glm::vec2(0.2f, 0.5f));
+		sprite->addKeyframe(WALK_FRONT, glm::vec2(0.3f, 0.5f)); 
 
 		sprite->setAnimationSpeed(WALK_BEHIND, 1);
-		sprite->addKeyframe(WALK_BEHIND, glm::vec2(0.0f, 0.2f)); 
+		sprite->addKeyframe(WALK_BEHIND, glm::vec2(0.0f, 0.5f));
+		sprite->addKeyframe(WALK_BEHIND, glm::vec2(0.1f, 0.5f));
 
 		sprite->setAnimationSpeed(LAND_RIGHT, 1);
-		sprite->addKeyframe(LAND_RIGHT, glm::vec2(0.0f, 0.2f)); 
+		sprite->addKeyframe(LAND_RIGHT, glm::vec2(0.5f, 0.3f)); 
+		sprite->addKeyframe(LAND_RIGHT, glm::vec2(0.6f, 0.3f));
+		sprite->addKeyframe(LAND_RIGHT, glm::vec2(0.7f, 0.3f));
+		sprite->addKeyframe(LAND_RIGHT, glm::vec2(0.8f, 0.3f));   
 
 		sprite->setAnimationSpeed(LAND_LEFT, 1);
-		sprite->addKeyframe(LAND_LEFT, glm::vec2(0.0f, 0.3f)); 
+		sprite->addKeyframe(LAND_LEFT, glm::vec2(0.4f, 0.4f)); 
+		sprite->addKeyframe(LAND_LEFT, glm::vec2(0.3f, 0.4f));
+		sprite->addKeyframe(LAND_LEFT, glm::vec2(0.2f, 0.4f));
+		sprite->addKeyframe(LAND_LEFT, glm::vec2(0.1f, 0.4f));   
 
 		sprite->setAnimationSpeed(DISAPPEAR, 6);
-		sprite->addKeyframe(DISAPPEAR, glm::vec2(0.0f, 0.8f)); 
-		sprite->addKeyframe(DISAPPEAR, glm::vec2(0.1f, 0.8f));
-		sprite->addKeyframe(DISAPPEAR, glm::vec2(0.2f, 0.8f));
-		sprite->addKeyframe(DISAPPEAR, glm::vec2(0.3f, 0.8f));
-		sprite->addKeyframe(DISAPPEAR, glm::vec2(0.4f, 0.8f));
+		sprite->addKeyframe(DISAPPEAR, glm::vec2(0.4f, 0.5f)); 
+		sprite->addKeyframe(DISAPPEAR, glm::vec2(0.5f, 0.5f));
+		sprite->addKeyframe(DISAPPEAR, glm::vec2(0.6f, 0.5f));
+		sprite->addKeyframe(DISAPPEAR, glm::vec2(0.7f, 0.5f));
 	}
 	else if (type == GHOST)
 	{
@@ -349,7 +370,144 @@ void Enemy::patrolMovement(int deltaTime)
 
 void Enemy::chasingPlayer_Lucas(int deltaTime)
 {
-	
+	const int ts   = map->getTileSize();
+	const int half = spriteSize / 2;
+	const glm::ivec2 size(spriteSize, spriteSize);
+
+	// Distancia al jugador en tiles (Chebyshev)
+	int distX = abs((posEnemy.x + half) - (targetPos.x + half)) / ts;
+	int distY = abs((posEnemy.y + half) - (targetPos.y + half)) / ts;
+
+	if (std::max(distX, distY) > LUC_DETECT_TILES)
+	{
+		patrolMovement(deltaTime);
+		return;
+	}
+
+	// --- Chase mode ---
+	int dx = targetPos.x - posEnemy.x;  // + = jugador a la derecha
+	int dy = targetPos.y - posEnemy.y;  // + = jugador abajo
+
+	bool onLadder = map->isOnLadder(posEnemy, size);
+	bool onJump   = map->isOnJump(posEnemy, size);
+
+	// --- Arco de salto activo ---
+	if (lucIsJumping)
+	{
+		lucJumpAngle += LUC_JUMP_STEP;
+		if (lucJumpAngle >= 180)
+		{
+			lucIsJumping = false;
+			posEnemy.y   = lucStartY;
+			map->collisionMoveDown(posEnemy, size, &posEnemy.y);
+		}
+		else
+		{
+			int jumpH  = spriteSize * LUC_JUMP_TILES;
+			posEnemy.y = int(lucStartY - jumpH * sin(lucJumpAngle * M_PI / 180.0));
+			if (lucJumpAngle < 90)
+			{
+				int dummy = posEnemy.y;
+				if (map->collisionMoveUp(posEnemy, size, &dummy))
+				{
+					posEnemy.y   = dummy;
+					lucIsJumping = false;
+				}
+			}
+			else if (map->collisionMoveDown(posEnemy, size, &posEnemy.y))
+				lucIsJumping = false;
+		}
+		// Deriva horizontal mientras salta
+		posXfrac += (dx > 0 ? 1.f : -1.f) * speed;
+		int step  = (int)posXfrac;
+		posXfrac -= (float)step;
+		posEnemy.x += step;
+		if (dx > 0 && map->collisionMoveRight(posEnemy, size)) posEnemy.x -= step;
+		if (dx < 0 && map->collisionMoveLeft (posEnemy, size)) posEnemy.x -= step;
+		int anim = (dx >= 0) ? WALK_RIGHT : WALK_LEFT;
+		if (sprite->animation() != anim) sprite->changeAnimation(anim);
+		return;
+	}
+
+	// --- Gravedad ---
+	if (!onLadder)
+		applyGravity(posEnemy, map, spriteSize);
+
+	// --- Jugador encima: usar escalera o trampolín ---
+	if (dy < -ts)
+	{
+		if (onJump)
+		{
+			lucIsJumping = true;
+			lucJumpAngle = 0;
+			lucStartY    = posEnemy.y;
+			return;
+		}
+		if (onLadder)
+		{
+			posEnemy.y -= (int)speed;
+			int dummy = posEnemy.y;
+			if (map->collisionMoveUp(posEnemy, size, &dummy))
+				posEnemy.y = dummy;
+			if (sprite->animation() != WALK_FRONT) sprite->changeAnimation(WALK_FRONT);
+			return;
+		}
+	}
+
+	// --- Jugador debajo: bajar por escalera ---
+	if (dy > ts && onLadder)
+	{
+		TileType below = map->tileTypeAt(posEnemy.x + half, posEnemy.y + spriteSize + 1);
+		if (below == TILE_LADDER)
+		{
+			posEnemy.y += (int)speed;
+			map->collisionMoveDown(posEnemy, size, &posEnemy.y);
+			if (sprite->animation() != WALK_FRONT) sprite->changeAnimation(WALK_FRONT);
+			return;
+		}
+	}
+
+	// --- Movimiento horizontal hacia el jugador ---
+	if (dx != 0)
+	{
+		posXfrac += (dx > 0 ? 1.f : -1.f) * speed;
+		int step  = (int)posXfrac;
+		posXfrac -= (float)step;
+		posEnemy.x += step;
+
+		bool blocked = false;
+		if (dx > 0)
+		{
+			if (map->collisionMoveRight(posEnemy, size)) { posEnemy.x -= step; posXfrac = 0.f; blocked = true; }
+			if (sprite->animation() != WALK_RIGHT) sprite->changeAnimation(WALK_RIGHT);
+		}
+		else
+		{
+			if (map->collisionMoveLeft(posEnemy, size)) { posEnemy.x -= step; posXfrac = 0.f; blocked = true; }
+			if (sprite->animation() != WALK_LEFT) sprite->changeAnimation(WALK_LEFT);
+		}
+
+		// Rampa: subir pendiente como el jugador
+		if (!blocked && map->isOnCliff(posEnemy, size))
+			posEnemy.y -= (int)speed;
+
+		// Trampolín al moverse horizontalmente
+		if (onJump && !lucIsJumping)
+		{
+			lucIsJumping = true;
+			lucJumpAngle = 0;
+			lucStartY    = posEnemy.y;
+		}
+	}
+	else
+	{
+		// Parado pero detectando al jugador: mirar hacia él
+		int standAnim = (targetPos.x >= posEnemy.x) ? STAND_RIGHT : STAND_LEFT;
+		if (sprite->animation() != STAND_RIGHT && sprite->animation() != STAND_LEFT)
+			sprite->changeAnimation(standAnim);
+		else if (sprite->animation() != standAnim)
+			sprite->changeAnimation(standAnim);
+	}
 }
 
 void Enemy::chasingPlayer_Tasmania(int deltaTime)
@@ -359,7 +517,6 @@ void Enemy::chasingPlayer_Tasmania(int deltaTime)
 	const float dy   = (float)(targetPos.y - posEnemy.y);
 	const float dist = sqrtf(dx * dx + dy * dy);
 
-	// --- Idle: player not detected ---
 	if (dist > TAS_DETECT_TILES * ts)
 	{
 		if (tasState != TAS_IDLE)
@@ -370,7 +527,6 @@ void Enemy::chasingPlayer_Tasmania(int deltaTime)
 		return;
 	}
 
-	// --- Tornado: fly diagonally toward player, ignoring all blocks ---
 	if (dist > TAS_STOP_TILES * ts)
 	{
 		if (tasState != TAS_TORNADO)
@@ -394,7 +550,6 @@ void Enemy::chasingPlayer_Tasmania(int deltaTime)
 		return;
 	}
 
-	// --- Walk: close to player, respect gravity and collisions ---
 	if (tasState != TAS_WALK)
 	{
 		tasState = TAS_WALK;

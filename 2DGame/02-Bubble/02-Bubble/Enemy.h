@@ -1,7 +1,7 @@
 #ifndef _ENEMY_INCLUDE
 #define _ENEMY_INCLUDE
 
-
+#include <vector>
 #include "Sprite.h"
 #include "TileMap.h"
 
@@ -64,6 +64,11 @@ private:
 	// Tasmania state machine
 	enum TasmaniaState { TAS_IDLE, TAS_TORNADO, TAS_WALK };
 	TasmaniaState tasState;
+
+	// Lucas chase jump
+	bool lucIsJumping;
+	int  lucJumpAngle;
+	int  lucStartY;
 };
 
 

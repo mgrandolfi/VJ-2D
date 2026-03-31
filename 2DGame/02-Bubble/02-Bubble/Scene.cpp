@@ -8,29 +8,16 @@
 
 
 namespace {
+	glm::ivec2 keyPickupPos(int ts, int ksz, int tx, int surfaceRow)
+	{
+		return glm::ivec2(tx * ts + (ts - ksz) / 2, surfaceRow * ts - ksz - 4);
+	}
 
-glm::ivec2 keyPickupPos(int ts, int ksz, int tx, int surfaceRow)
-{
-	return glm::ivec2(tx * ts + (ts - ksz) / 2, surfaceRow * ts - ksz - 4);
+	glm::ivec2 itemPickupPos(int ts, int tx, int surfaceRow)
+	{
+		return glm::ivec2(tx * ts, (surfaceRow - 1) * ts);
+	}
 }
-
-glm::ivec2 itemPickupPos(int ts, int tx, int surfaceRow)
-{
-	return glm::ivec2(tx * ts, (surfaceRow - 1) * ts);
-}
-
-void applySecretRoomTileTypes(TileMap *m)
-{
-	for (int t : {0, 1, 9, 21, 52})
-		m->setTileType(t, TILE_BLOCK);
-	m->setTileType(2, TILE_LADDER);
-	m->setTileType(3, TILE_DOOR);
-	m->setTileType(4, TILE_JUMP);
-	m->setTileType(5, TILE_WARP);
-}
-
-} // namespace
-
 
 #define SCREEN_X 0
 #define SCREEN_Y 16
@@ -46,6 +33,8 @@ void applySecretRoomTileTypes(TileMap *m)
 #define L1_PIOLIN_X      16
 #define L1_PIOLIN_Y       3
 #define L1_PIOLIN_RANGE   4
+#define L1_LUCAS_X       16
+#define L1_LUCAS_Y      3
 #define L1_TASMANIA_X     3
 #define L1_TASMANIA_Y    17
 
@@ -95,7 +84,7 @@ Scene::Scene()
 	activeEnemies     = 0;
 	keyWorldPixelSize = 16;
 	levelIndex        = 1;
-	inSecretRoom      = false;
+	// inSecretRoom      = false;
 	secretAnimTimer   = 0;
 	secretEnterPending = false;
 	secretLootTaken   = true;
@@ -216,7 +205,7 @@ void Scene::loadLevel(int level)
 	hasItem        = false;
 	currentTime    = 0.f;
 	levelIndex     = level;
-	inSecretRoom   = false;
+	// inSecretRoom   = false;
 	secretAnimTimer = 0;
 	secretEnterPending = false;
 	secretLootTaken = true;
@@ -311,7 +300,6 @@ void Scene::initMap(int level)
 		warpTiles = { glm::ivec2(15, 18), glm::ivec2(17, 7) }; 
 	}
 	applyTileTypes();
-	markSecretDoorTiles(level);
 }
 
 void Scene::applyTileTypes()
@@ -385,7 +373,8 @@ void Scene::spawnEntities(int level)
 		setSpawn(INIT_PLAYER_X_TILES, INIT_PLAYER_Y_TILES);
 		spawnEnemy(0, PIOLIN, L1_PIOLIN_X, L1_PIOLIN_Y);
 		enemies[0]->setPatrolRange(L1_PIOLIN_RANGE * ts);
-		spawnEnemy(1, TASMANIA, L1_TASMANIA_X, L1_TASMANIA_Y);
+		spawnEnemy(1, LUCAS, L1_LUCAS_X, L1_LUCAS_Y);
+		// spawnEnemy(1, TASMANIA, L1_TASMANIA_X, L1_TASMANIA_Y);
 		keysRequired = 3;
 		keys[0] = { keyPickupPos(ts, kz, 5, 15), false };
 		keys[1] = { keyPickupPos(ts, kz, 10, 11), false };
@@ -487,20 +476,6 @@ void Scene::update(int deltaTime)
 		respawnTimer -= deltaTime;
 		if (respawnTimer <= 0.f)
 			player->setPosition(glm::vec2(spawnPos));
-		return;
-	}
-
-	if (secretAnimTimer > 0)
-	{
-		secretAnimTimer -= deltaTime;
-		if (secretAnimTimer <= 0 && secretEnterPending)
-		{
-			finishEnterSecretRoom();
-			secretEnterPending = false;
-		}
-		player->update(deltaTime);
-		if (player->getLives() <= 0)
-			gameOver = true;
 		return;
 	}
 
@@ -607,8 +582,8 @@ void Scene::update(int deltaTime)
 			hasItem     = true;
 			carriedItem = secretLoot.type;
 		}
-		if (map->isOnDoor(playerPos, playerSize) && Game::instance().getKey(GLFW_KEY_UP))
-			exitSecretRoom();
+		// if (map->isOnDoor(playerPos, playerSize) && Game::instance().getKey(GLFW_KEY_UP))
+			// exitSecretRoom();
 	}
 
 	for (int i = 0; i < keysRequired; ++i) {
@@ -676,9 +651,6 @@ void Scene::update(int deltaTime)
 				break;
 			}
 		}
-
-		if (Game::instance().getKey(GLFW_KEY_UP) && playerOnSecretDoor(playerPos, playerSize))
-			beginEnterSecretRoom();
 
 		if (keysCollected >= keysRequired && map->isOnDoor(playerPos, playerSize))
 			levelComplete = true;
@@ -756,7 +728,11 @@ void Scene::render()
 
 	player->render();
 
-	if (player->isGodMode() && !inSecretRoom)
+	for (int i = 0; i < activeEnemies; ++i)
+		if (enemies[i] && enemies[i]->isAlive())
+			enemies[i]->render();
+
+	if (player->isGodMode())
 	{
 		const glm::ivec2 pp = player->getPosition();
 		const int ps = player->getSpriteSize().x;
@@ -772,20 +748,8 @@ void Scene::render()
 		}
 		texProgram.setUniform4f("color", 1.f, 1.f, 1.f, 1.f);
 	}
-
-	if (!inSecretRoom)
-	{
-		for (int i = 0; i < activeEnemies; ++i)
-			if (enemies[i]->isAlive())
-				enemies[i]->render();
-	}
-
 	renderHUD();
 }
-
-// ---------------------------------------------------------------------------
-// HUD rendered in screen-space (always 640x480) for consistent sizing
-// ---------------------------------------------------------------------------
 
 void Scene::renderHUD()
 {
@@ -802,7 +766,6 @@ void Scene::renderHUD()
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-	// Hearts (lives)
 	texProgram.setUniform4f("color", 1.f, 1.f, 1.f, 1.f);
 	for (int i = 0; i < player->getLives(); ++i)
 	{
@@ -810,7 +773,6 @@ void Scene::renderHUD()
 		heartSprite->render();
 	}
 
-	// Keys collected (0–3) — single icon from items atlas + digit
 	{
 		float ky = HUD_MARGIN + HUD_SPACING;
 		texProgram.setUniform4f("color", 1.f, 1.f, 1.f, 1.f);
@@ -841,80 +803,6 @@ void Scene::renderHUD()
 	glDisable(GL_BLEND);
 
 	texProgram.setUniformMatrix4f("projection", projection);
-}
-
-// ---------------------------------------------------------------------------
-
-void Scene::markSecretDoorTiles(int level)
-{
-	switch (level)
-	{
-	case 1:
-		for (int t : {33, 36, 41})
-			map->setTileType(t, TILE_SECRET);
-		break;
-	case 2:
-	case 4:
-	case 5:
-		for (int t : {24, 43, 51})
-			map->setTileType(t, TILE_SECRET);
-		break;
-	default:
-		break;
-	}
-}
-
-bool Scene::playerOnSecretDoor(const glm::ivec2 &playerPos, const glm::ivec2 &playerSize) const
-{
-	const int ts = map->getTileSize();
-	glm::ivec2 c((playerPos.x + playerSize.x / 2) / ts,
-	             (playerPos.y + playerSize.y / 2) / ts);
-	if (levelIndex == 3)
-	{
-		const glm::ivec2 pts[] = {glm::ivec2(8, 12), glm::ivec2(12, 7), glm::ivec2(14, 4)};
-		for (const auto &p : pts)
-			if (c == p)
-				return true;
-		return false;
-	}
-	return map->isOnSecret(playerPos, playerSize);
-}
-
-void Scene::beginEnterSecretRoom()
-{
-	if (inSecretRoom || secretAnimTimer > 0 || secretEnterPending || secretExitCooldown > 0)
-		return;
-	secretReturnPos = player->getPosition();
-	secretAnimTimer = 450;
-	secretEnterPending = true;
-	player->playDoorEnterAnim();
-}
-
-void Scene::finishEnterSecretRoom()
-{
-	secretMap = TileMap::createTileMap("levels/secret_room.txt", glm::vec2(SCREEN_X, SCREEN_Y), texProgram);
-	applySecretRoomTileTypes(secretMap);
-	map = secretMap;
-	player->setTileMap(map);
-	inSecretRoom = true;
-	const int sts = map->getTileSize();
-	player->setPosition(glm::vec2(3.f * sts, 6.f * sts));
-	secretLoot       = {ITEM_CLOCK, glm::ivec2(5 * sts + 4, 4 * sts + 4), false};
-	secretLootTaken  = false;
-}
-
-void Scene::exitSecretRoom()
-{
-	if (!secretMap)
-		return;
-	delete secretMap;
-	secretMap = NULL;
-	map = mainMap;
-	player->setTileMap(map);
-	player->setPosition(glm::vec2(secretReturnPos));
-	inSecretRoom = false;
-	secretExitCooldown = 500;
-	player->playDoorExitAnim();
 }
 
 void Scene::setGodMode(bool g)
