@@ -71,6 +71,12 @@ private:
 	bool checkCollision(const glm::ivec2 &posA, const glm::ivec2 &posB,
 	                    const glm::ivec2 &sizeA, const glm::ivec2 &sizeB) const;
 
+	void markSecretDoorTiles(int level);
+	bool playerOnSecretDoor(const glm::ivec2 &playerPos, const glm::ivec2 &playerSize) const;
+	void beginEnterSecretRoom();
+	void finishEnterSecretRoom();
+	void exitSecretRoom();
+
 private:
 	// Tile type classification for the current level (set in initMap per level)
 	std::vector<int> tileBlocks;
@@ -97,15 +103,30 @@ private:
 	float          camX, camY;    // top-left of viewport in world coords
 
 	// HUD assets (rendered in screen-space projection)
-	Texture        heartTex, keyIconTex;
-	Sprite        *heartSprite, *keySprite;
+	Texture        heartTex;
+	Sprite        *heartSprite;
 
-	// Item/key world sprites
+	// Item/key sprites (single atlas: images/sprites/items.png 160x64, cells 32x32)
 	Texture        itemTex;
 	Sprite        *itemSprite;       // world pickups (quad = tileSize)
 	Sprite        *itemHudSprite;    // carried-item icon in HUD (fixed size)
-	Sprite        *keyWorldSprite;   // keys in the level (smaller than tile for scale)
+	Sprite        *keyWorldSprite;   // keys in the level (smaller than tile)
+	Sprite        *keyHudSprite;     // one key icon + numeric counter in HUD
+	Sprite        *godHudSprite;     // god-mode icon (grayscale heart row)
+	Sprite        *godAuraSprites[3];
 	int            keyWorldPixelSize;
+
+	// Main level vs secret room
+	TileMap       *mainMap;
+	TileMap       *secretMap;
+	int            levelIndex;
+	bool           inSecretRoom;
+	glm::ivec2     secretReturnPos;
+	int            secretAnimTimer;   // ms: entering / exiting
+	bool           secretEnterPending;
+	LevelItem      secretLoot;
+	bool           secretLootTaken;
+	int            secretExitCooldown;
 
 	// Spawn position (reset here on respawn)
 	glm::ivec2     spawnPos;

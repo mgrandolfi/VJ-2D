@@ -318,6 +318,13 @@ bool TileMap::isOnDoor(const glm::ivec2 &pos, const glm::ivec2 &size) const
 	return tileTypeAt(cx, cy) == TILE_DOOR;
 }
 
+bool TileMap::isOnSecret(const glm::ivec2 &pos, const glm::ivec2 &size) const
+{
+	int cx = pos.x + size.x / 2;
+	int cy = pos.y + size.y / 2;
+	return tileTypeAt(cx, cy) == TILE_SECRET;
+}
+
 bool TileMap::isOnJump(const glm::ivec2 &pos, const glm::ivec2 &size) const
 {
 	int x0 = pos.x / tileSize;
