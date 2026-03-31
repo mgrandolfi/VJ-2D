@@ -16,7 +16,8 @@ enum TileType
 	TILE_JUMP,
 	TILE_WARP,
 	TILE_CLIFF,     // ramps / one-way slopes
-	TILE_ELEVATOR   // vertical tunnel (up/down shaft)
+	TILE_ELEVATOR,  // vertical tunnel (up/down shaft)
+	TILE_SECRET     // secret door trigger (walk-through, Up to enter)
 };
 
 class TileMap
@@ -50,6 +51,7 @@ public:
 	bool isOnLadder(const glm::ivec2 &pos, const glm::ivec2 &size) const;
 	bool isOnCliff(const glm::ivec2 &pos, const glm::ivec2 &size) const;
 	bool isOnDoor(const glm::ivec2 &pos, const glm::ivec2 &size) const;
+	bool isOnSecret(const glm::ivec2 &pos, const glm::ivec2 &size) const;
 	bool isOnJump(const glm::ivec2 &pos, const glm::ivec2 &size) const;
 	bool isOnWarp(const glm::ivec2 &pos, const glm::ivec2 &size) const;
 

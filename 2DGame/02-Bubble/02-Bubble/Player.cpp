@@ -414,9 +414,20 @@ void Player::setPosition(const glm::vec2 &pos)
 	                              float(tileMapDispl.y + posPlayer.y)));
 }
 
+void Player::playDoorEnterAnim()
+{
+	sprite->changeAnimation(ENTER);
+}
+
+void Player::playDoorExitAnim()
+{
+	sprite->changeAnimation(EXIT);
+}
+
 void Player::dies()
 {
-	if (hurtTimer > 0 || godMode) return;
+	if (hurtTimer > 0 || godMode || livesPlayer <= 0)
+		return;
 
 	livesPlayer--;
 	hurtTimer = HURT_INVINCIBLE_MS;

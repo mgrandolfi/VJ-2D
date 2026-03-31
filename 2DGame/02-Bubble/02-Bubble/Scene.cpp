@@ -3,6 +3,33 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include "Scene.h"
 #include "Game.h"
+#include <cstdio>
+#include <GLFW/glfw3.h>
+
+
+namespace {
+
+glm::ivec2 keyPickupPos(int ts, int ksz, int tx, int surfaceRow)
+{
+	return glm::ivec2(tx * ts + (ts - ksz) / 2, surfaceRow * ts - ksz - 4);
+}
+
+glm::ivec2 itemPickupPos(int ts, int tx, int surfaceRow)
+{
+	return glm::ivec2(tx * ts, (surfaceRow - 1) * ts);
+}
+
+void applySecretRoomTileTypes(TileMap *m)
+{
+	for (int t : {0, 1, 9, 21, 52})
+		m->setTileType(t, TILE_BLOCK);
+	m->setTileType(2, TILE_LADDER);
+	m->setTileType(3, TILE_DOOR);
+	m->setTileType(4, TILE_JUMP);
+	m->setTileType(5, TILE_WARP);
+}
+
+} // namespace
 
 
 #define SCREEN_X 0
@@ -49,28 +76,44 @@
 
 Scene::Scene()
 {
-	map           = NULL;
-	player        = NULL;
-	heartSprite   = NULL;
-	keySprite     = NULL;
+	map            = NULL;
+	mainMap        = NULL;
+	secretMap      = NULL;
+	player         = NULL;
+	heartSprite    = NULL;
 	itemSprite     = NULL;
 	itemHudSprite  = NULL;
 	keyWorldSprite = NULL;
+	keyHudSprite   = NULL;
+	godHudSprite   = NULL;
+	for (int i = 0; i < 3; ++i)
+		godAuraSprites[i] = NULL;
 	for (int i = 0; i < MAX_ENEMIES; ++i)
 		enemies[i] = NULL;
-	activeEnemies = 0;
+	activeEnemies     = 0;
 	keyWorldPixelSize = 16;
+	levelIndex        = 1;
+	inSecretRoom      = false;
+	secretAnimTimer   = 0;
+	secretEnterPending = false;
+	secretLootTaken   = true;
+	secretExitCooldown = 0;
 }
 
 Scene::~Scene()
 {
-	if (map)           delete map;
-	if (player)        delete player;
-	if (heartSprite)   delete heartSprite;
-	if (keySprite)     delete keySprite;
+	if (secretMap)      delete secretMap;
+	if (mainMap)        delete mainMap;
+	map = NULL;
+	if (player)         delete player;
+	if (heartSprite)    delete heartSprite;
 	if (itemSprite)     delete itemSprite;
 	if (itemHudSprite)  delete itemHudSprite;
 	if (keyWorldSprite) delete keyWorldSprite;
+	if (keyHudSprite)   delete keyHudSprite;
+	if (godHudSprite)   delete godHudSprite;
+	for (int i = 0; i < 3; ++i)
+		if (godAuraSprites[i]) delete godAuraSprites[i];
 	for (int i = 0; i < MAX_ENEMIES; ++i)
 		if (enemies[i]) delete enemies[i];
 }
@@ -100,7 +143,6 @@ void Scene::initShaders()
 
 	// HUD sprites — fixed screen-space size
 	heartTex.loadFromFile("images/sprites/heart.png", TEXTURE_PIXEL_FORMAT_RGBA);
-	keyIconTex.loadFromFile("images/sprites/key.png", TEXTURE_PIXEL_FORMAT_RGBA);
 
 	heartSprite = Sprite::createSprite(glm::ivec2(HUD_ICON_SIZE, HUD_ICON_SIZE),
 	                                   glm::vec2(1.f, 1.f), &heartTex, &texProgram);
@@ -109,29 +151,50 @@ void Scene::initShaders()
 	heartSprite->addKeyframe(0, glm::vec2(0.f, 0.f));
 	heartSprite->changeAnimation(0);
 
-	keySprite = Sprite::createSprite(glm::ivec2(HUD_ICON_SIZE, HUD_ICON_SIZE),
-	                                 glm::vec2(1.f, 1.f), &keyIconTex, &texProgram);
-	keySprite->setNumberAnimations(1);
-	keySprite->setAnimationSpeed(0, 1);
-	keySprite->addKeyframe(0, glm::vec2(0.f, 0.f));
-	keySprite->changeAnimation(0);
-
-	// Item texture — world quads created per level; HUD uses fixed-size sprite
+	// Atlas 160x64: top row cells 0–3 items, cell 4 key; bottom: god icon + 3 auras
 	itemTex.loadFromFile("images/sprites/items.png", TEXTURE_PIXEL_FORMAT_RGBA);
+	const glm::vec2 cell(0.2f, 0.5f);
+
 	itemHudSprite = Sprite::createSprite(glm::ivec2(HUD_ICON_SIZE, HUD_ICON_SIZE),
-	                                     glm::vec2(0.25f, 1.f), &itemTex, &texProgram);
+	                                     cell, &itemTex, &texProgram);
 	itemHudSprite->setNumberAnimations(4);
 	for (int i = 0; i < 4; ++i)
 	{
 		itemHudSprite->setAnimationSpeed(i, 1);
-		itemHudSprite->addKeyframe(i, glm::vec2(0.25f * i, 0.f));
+		itemHudSprite->addKeyframe(i, glm::vec2(0.2f * float(i), 0.f));
 	}
 	itemHudSprite->changeAnimation(0);
+
+	keyHudSprite = Sprite::createSprite(glm::ivec2(22, 22),
+	                                    cell, &itemTex, &texProgram);
+	keyHudSprite->setNumberAnimations(1);
+	keyHudSprite->setAnimationSpeed(0, 1);
+	keyHudSprite->addKeyframe(0, glm::vec2(0.8f, 0.f));
+	keyHudSprite->changeAnimation(0);
+
+	godHudSprite = Sprite::createSprite(glm::ivec2(HUD_ICON_SIZE, HUD_ICON_SIZE),
+	                                    cell, &itemTex, &texProgram);
+	godHudSprite->setNumberAnimations(1);
+	godHudSprite->setAnimationSpeed(0, 1);
+	godHudSprite->addKeyframe(0, glm::vec2(0.f, 0.5f));
+	godHudSprite->changeAnimation(0);
+
+	for (int i = 0; i < 3; ++i)
+	{
+		godAuraSprites[i] = Sprite::createSprite(glm::ivec2(14, 14),
+		                                         cell, &itemTex, &texProgram);
+		godAuraSprites[i]->setNumberAnimations(1);
+		godAuraSprites[i]->setAnimationSpeed(0, 1);
+		godAuraSprites[i]->addKeyframe(0, glm::vec2(0.2f * float(i + 1), 0.5f));
+		godAuraSprites[i]->changeAnimation(0);
+	}
 }
 
 void Scene::loadLevel(int level)
 {
-	if (map)    { delete map;    map    = NULL; }
+	if (secretMap) { delete secretMap; secretMap = NULL; }
+	if (mainMap)   { delete mainMap;   mainMap   = NULL; }
+	map = NULL;
 	if (player) { delete player; player = NULL; }
 	for (int i = 0; i < MAX_ENEMIES; ++i)
 	{
@@ -149,6 +212,12 @@ void Scene::loadLevel(int level)
 	itemCount      = 0;
 	hasItem        = false;
 	currentTime    = 0.f;
+	levelIndex     = level;
+	inSecretRoom   = false;
+	secretAnimTimer = 0;
+	secretEnterPending = false;
+	secretLootTaken = true;
+	secretExitCooldown = 0;
 
 	initMap(level);
 	recreateWorldPickupSprites(map->getTileSize());
@@ -176,7 +245,8 @@ void Scene::initMap(int level)
 	default: levelFile = "levels/level_5.txt"; break;
 	}
 
-	map = TileMap::createTileMap(levelFile, glm::vec2(SCREEN_X, SCREEN_Y), texProgram);
+	mainMap = TileMap::createTileMap(levelFile, glm::vec2(SCREEN_X, SCREEN_Y), texProgram);
+	map     = mainMap;
 
 	tileBlocks.clear();
 	tileCliffs.clear();
@@ -220,6 +290,7 @@ void Scene::initMap(int level)
 	}
 
 	applyTileTypes();
+	markSecretDoorTiles(level);
 }
 
 void Scene::applyTileTypes()
@@ -244,20 +315,20 @@ void Scene::recreateWorldPickupSprites(int ts)
 	if (keyWorldPixelSize > ts - 2)
 		keyWorldPixelSize = ts - 2;
 
+	const glm::vec2 cell(0.2f, 0.5f);
 	keyWorldSprite = Sprite::createSprite(glm::ivec2(keyWorldPixelSize, keyWorldPixelSize),
-	                                    glm::vec2(1.f, 1.f), &keyIconTex, &texProgram);
+	                                      cell, &itemTex, &texProgram);
 	keyWorldSprite->setNumberAnimations(1);
 	keyWorldSprite->setAnimationSpeed(0, 1);
-	keyWorldSprite->addKeyframe(0, glm::vec2(0.f, 0.f));
+	keyWorldSprite->addKeyframe(0, glm::vec2(0.8f, 0.f));
 	keyWorldSprite->changeAnimation(0);
 
-	itemSprite = Sprite::createSprite(glm::ivec2(ts, ts),
-	                                glm::vec2(0.25f, 1.f), &itemTex, &texProgram);
+	itemSprite = Sprite::createSprite(glm::ivec2(ts, ts), cell, &itemTex, &texProgram);
 	itemSprite->setNumberAnimations(4);
 	for (int i = 0; i < 4; ++i)
 	{
 		itemSprite->setAnimationSpeed(i, 1);
-		itemSprite->addKeyframe(i, glm::vec2(0.25f * i, 0.f));
+		itemSprite->addKeyframe(i, glm::vec2(0.2f * float(i), 0.f));
 	}
 	itemSprite->changeAnimation(0);
 }
@@ -285,6 +356,8 @@ void Scene::spawnEntities(int level)
 		player->setPosition(glm::vec2(spawnPos));
 	};
 
+	const int kz = keyWorldPixelSize;
+
 	switch (level)
 	{
 	case 1:
@@ -292,13 +365,13 @@ void Scene::spawnEntities(int level)
 		spawnEnemy(0, PIOLIN, L1_PIOLIN_X, L1_PIOLIN_Y);
 		enemies[0]->setPatrolRange(L1_PIOLIN_RANGE * ts);
 		keysRequired = 3;
-		keys[0] = { glm::ivec2(5  * ts, 14 * ts), false };
-		keys[1] = { glm::ivec2(10 * ts, 10 * ts), false };
-		keys[2] = { glm::ivec2(15 * ts, 4  * ts), false };
-		items[0] = { ITEM_WEIGHT, glm::ivec2(3  * ts, 14 * ts), false };
-		items[1] = { ITEM_BOMB,   glm::ivec2(12 * ts, 10 * ts), false };
-		items[2] = { ITEM_BOOTS,  glm::ivec2(8  * ts, 6  * ts), false };
-		items[3] = { ITEM_CLOCK,  glm::ivec2(16 * ts, 6  * ts), false };
+		keys[0] = { keyPickupPos(ts, kz, 5, 15), false };
+		keys[1] = { keyPickupPos(ts, kz, 10, 11), false };
+		keys[2] = { keyPickupPos(ts, kz, 15, 6), false };
+		items[0] = { ITEM_WEIGHT, itemPickupPos(ts, 3, 15), false };
+		items[1] = { ITEM_BOMB,   itemPickupPos(ts, 12, 11), false };
+		items[2] = { ITEM_BOOTS,  itemPickupPos(ts, 8, 7), false };
+		items[3] = { ITEM_CLOCK,  itemPickupPos(ts, 16, 7), false };
 		itemCount = 4;
 		break;
 
@@ -307,13 +380,13 @@ void Scene::spawnEntities(int level)
 		spawnEnemy(0, LUCAS,  L2_LUCAS_X,  L2_LUCAS_Y);
 		spawnEnemy(1, PIOLIN, L2_PIOLIN_X, L2_PIOLIN_Y);
 		keysRequired = 3;
-		keys[0] = { glm::ivec2(5  * ts, 13 * ts), false };
-		keys[1] = { glm::ivec2(10 * ts,  7 * ts), false };
-		keys[2] = { glm::ivec2(17 * ts,  2 * ts), false };
-		items[0] = { ITEM_WEIGHT, glm::ivec2(7  * ts, 13 * ts), false };
-		items[1] = { ITEM_BOMB,   glm::ivec2(15 * ts,  7 * ts), false };
-		items[2] = { ITEM_BOOTS,  glm::ivec2( 4 * ts,  7 * ts), false };
-		items[3] = { ITEM_CLOCK,  glm::ivec2(12 * ts,  2 * ts), false };
+		keys[0] = { keyPickupPos(ts, kz, 5, 14), false };
+		keys[1] = { keyPickupPos(ts, kz, 10, 8), false };
+		keys[2] = { keyPickupPos(ts, kz, 17, 3), false };
+		items[0] = { ITEM_WEIGHT, itemPickupPos(ts, 7, 14), false };
+		items[1] = { ITEM_BOMB,   itemPickupPos(ts, 15, 8), false };
+		items[2] = { ITEM_BOOTS,  itemPickupPos(ts, 4, 8), false };
+		items[3] = { ITEM_CLOCK,  itemPickupPos(ts, 12, 3), false };
 		itemCount = 4;
 		break;
 
@@ -322,13 +395,13 @@ void Scene::spawnEntities(int level)
 		spawnEnemy(0, PIOLIN,    L3_PIOLIN_X,    L3_PIOLIN_Y);
 		spawnEnemy(1, GHOST, L3_SILVESTRE_X, L3_SILVESTRE_Y);
 		keysRequired = 3;
-		keys[0] = { glm::ivec2(5  * ts, 14 * ts), false };
-		keys[1] = { glm::ivec2(10 * ts, 8  * ts), false };
-		keys[2] = { glm::ivec2(15 * ts, 4  * ts), false };
-		items[0] = { ITEM_WEIGHT, glm::ivec2(3  * ts, 14 * ts), false };
-		items[1] = { ITEM_BOMB,   glm::ivec2(12 * ts, 8  * ts), false };
-		items[2] = { ITEM_BOOTS,  glm::ivec2(8  * ts, 5  * ts), false };
-		items[3] = { ITEM_CLOCK,  glm::ivec2(16 * ts, 4  * ts), false };
+		keys[0] = { keyPickupPos(ts, kz, 5, 15), false };
+		keys[1] = { keyPickupPos(ts, kz, 10, 9), false };
+		keys[2] = { keyPickupPos(ts, kz, 15, 5), false };
+		items[0] = { ITEM_WEIGHT, itemPickupPos(ts, 3, 15), false };
+		items[1] = { ITEM_BOMB,   itemPickupPos(ts, 12, 9), false };
+		items[2] = { ITEM_BOOTS,  itemPickupPos(ts, 8, 6), false };
+		items[3] = { ITEM_CLOCK,  itemPickupPos(ts, 16, 5), false };
 		itemCount = 4;
 		break;
 
@@ -337,13 +410,13 @@ void Scene::spawnEntities(int level)
 		spawnEnemy(0, LUCAS,    L4_LUCAS_X,    L4_LUCAS_Y);
 		spawnEnemy(1, TASMANIA, L4_TASMANIA_X, L4_TASMANIA_Y);
 		keysRequired = 3;
-		keys[0] = { glm::ivec2(7  * ts, 13 * ts), false };
-		keys[1] = { glm::ivec2(10 * ts,  7 * ts), false };
-		keys[2] = { glm::ivec2(16 * ts,  2 * ts), false };
-		items[0] = { ITEM_WEIGHT, glm::ivec2(5  * ts, 13 * ts), false };
-		items[1] = { ITEM_BOMB,   glm::ivec2(14 * ts,  7 * ts), false };
-		items[2] = { ITEM_BOOTS,  glm::ivec2( 4 * ts,  7 * ts), false };
-		items[3] = { ITEM_CLOCK,  glm::ivec2(12 * ts,  2 * ts), false };
+		keys[0] = { keyPickupPos(ts, kz, 7, 14), false };
+		keys[1] = { keyPickupPos(ts, kz, 10, 8), false };
+		keys[2] = { keyPickupPos(ts, kz, 16, 3), false };
+		items[0] = { ITEM_WEIGHT, itemPickupPos(ts, 5, 14), false };
+		items[1] = { ITEM_BOMB,   itemPickupPos(ts, 14, 8), false };
+		items[2] = { ITEM_BOOTS,  itemPickupPos(ts, 4, 8), false };
+		items[3] = { ITEM_CLOCK,  itemPickupPos(ts, 12, 3), false };
 		itemCount = 4;
 		break;
 
@@ -353,13 +426,13 @@ void Scene::spawnEntities(int level)
 		spawnEnemy(1, TASMANIA,  L5_TASMANIA_X,  L5_TASMANIA_Y);
 		spawnEnemy(2, LUCAS,     L5_LUCAS_X,     L5_LUCAS_Y);
 		keysRequired = 3;
-		keys[0] = { glm::ivec2(7  * ts, 13 * ts), false };
-		keys[1] = { glm::ivec2(10 * ts,  7 * ts), false };
-		keys[2] = { glm::ivec2(16 * ts,  2 * ts), false };
-		items[0] = { ITEM_WEIGHT, glm::ivec2(5  * ts, 13 * ts), false };
-		items[1] = { ITEM_BOMB,   glm::ivec2(14 * ts,  7 * ts), false };
-		items[2] = { ITEM_BOOTS,  glm::ivec2( 4 * ts,  7 * ts), false };
-		items[3] = { ITEM_CLOCK,  glm::ivec2(12 * ts,  2 * ts), false };
+		keys[0] = { keyPickupPos(ts, kz, 7, 14), false };
+		keys[1] = { keyPickupPos(ts, kz, 10, 8), false };
+		keys[2] = { keyPickupPos(ts, kz, 16, 3), false };
+		items[0] = { ITEM_WEIGHT, itemPickupPos(ts, 5, 14), false };
+		items[1] = { ITEM_BOMB,   itemPickupPos(ts, 14, 8), false };
+		items[2] = { ITEM_BOOTS,  itemPickupPos(ts, 4, 8), false };
+		items[3] = { ITEM_CLOCK,  itemPickupPos(ts, 12, 3), false };
 		itemCount = 4;
 		break;
 	}
@@ -383,6 +456,8 @@ bool Scene::checkCollision(const glm::ivec2 &posA, const glm::ivec2 &posB,
 void Scene::update(int deltaTime)
 {
 	currentTime += deltaTime;
+	if (secretExitCooldown > 0)
+		secretExitCooldown -= deltaTime;
 
 	if (enemiesFrozen)
 	{
@@ -396,6 +471,20 @@ void Scene::update(int deltaTime)
 		respawnTimer -= deltaTime;
 		if (respawnTimer <= 0.f)
 			player->setPosition(glm::vec2(spawnPos));
+		return;
+	}
+
+	if (secretAnimTimer > 0)
+	{
+		secretAnimTimer -= deltaTime;
+		if (secretAnimTimer <= 0 && secretEnterPending)
+		{
+			finishEnterSecretRoom();
+			secretEnterPending = false;
+		}
+		player->update(deltaTime);
+		if (player->getLives() <= 0)
+			gameOver = true;
 		return;
 	}
 
@@ -447,95 +536,115 @@ void Scene::update(int deltaTime)
 	const glm::ivec2 enemySize(ts, ts);
 	const glm::ivec2 pickupSize(ts, ts);
 
-	for (int i = 0; i < activeEnemies; ++i)
+	if (inSecretRoom)
 	{
-		if (!enemies[i]->isAlive()) continue;
-
-		enemies[i]->setTarget(playerPos);
-		if (!enemiesFrozen)
-			enemies[i]->update(deltaTime);
-
-		glm::ivec2 pHitPos = playerPos;
-		glm::ivec2 pHitSize = playerSize;
-		if (map->isOnLadder(pHitPos, pHitSize))
+		if (!secretLootTaken &&
+		    checkCollision(playerPos, secretLoot.pos, playerSize, pickupSize))
 		{
-			pHitPos.x -= 6;
-			pHitSize.x += 12;
-		}
-
-		if (!player->isGodMode() && !player->isHurt() &&
-		    checkCollision(pHitPos, enemies[i]->getPosition(), pHitSize, enemySize))
-		{
-			player->dies();
-			if (player->getLives() <= 0)
-				gameOver = true;
-			else
-				respawnTimer = 1500.f;
-		}
-	}
-
-	for (int i = 0; i < itemCount; ++i)
-	{
-		if (items[i].collected) continue;
-		if (checkCollision(playerPos, items[i].pos, playerSize, pickupSize))
-		{
-			items[i].collected = true;
+			secretLootTaken = true;
 			hasItem     = true;
-			carriedItem = items[i].type;
+			carriedItem = secretLoot.type;
 		}
+		if (map->isOnDoor(playerPos, playerSize) && Game::instance().getKey(GLFW_KEY_UP))
+			exitSecretRoom();
 	}
-
-	for (int i = 0; i < keysRequired; ++i)
+	else
 	{
-		if (keys[i].collected) continue;
-		if (checkCollision(playerPos, keys[i].pos, playerSize, pickupSize))
+		for (int i = 0; i < activeEnemies; ++i)
 		{
-			keys[i].collected = true;
-			keysCollected++;
+			if (!enemies[i]->isAlive()) continue;
+
+			enemies[i]->setTarget(playerPos);
+			if (!enemiesFrozen)
+				enemies[i]->update(deltaTime);
+
+			glm::ivec2 pHitPos = playerPos;
+			glm::ivec2 pHitSize = playerSize;
+			if (map->isOnLadder(pHitPos, pHitSize))
+			{
+				pHitPos.x -= 6;
+				pHitSize.x += 12;
+			}
+
+			if (!player->isGodMode() && !player->isHurt() &&
+			    checkCollision(pHitPos, enemies[i]->getPosition(), pHitSize, enemySize))
+			{
+				player->dies();
+				if (player->getLives() <= 0)
+					gameOver = true;
+				else
+					respawnTimer = 1500.f;
+			}
 		}
+
+		for (int i = 0; i < itemCount; ++i)
+		{
+			if (items[i].collected) continue;
+			if (checkCollision(playerPos, items[i].pos, playerSize, pickupSize))
+			{
+				items[i].collected = true;
+				hasItem     = true;
+				carriedItem = items[i].type;
+			}
+		}
+
+		for (int i = 0; i < keysRequired; ++i)
+		{
+			if (keys[i].collected) continue;
+			if (checkCollision(playerPos, keys[i].pos, playerSize, pickupSize))
+			{
+				keys[i].collected = true;
+				keysCollected++;
+			}
+		}
+
+		if (hasItem && Game::instance().getKey(GLFW_KEY_Z))
+		{
+			hasItem = false;
+			switch (carriedItem)
+			{
+			case ITEM_CLOCK:
+				enemiesFrozen = true;
+				freezeTimer   = 5000.f;
+				break;
+
+			case ITEM_BOOTS:
+				player->applyBoots(5000);
+				break;
+
+			case ITEM_BOMB:
+				for (int i = 0; i < activeEnemies; ++i)
+				{
+					if (!enemies[i]->isAlive()) continue;
+					glm::ivec2 diff = enemies[i]->getPosition() - playerPos;
+					if (abs(diff.x) < 3 * ts && abs(diff.y) < 3 * ts)
+						enemies[i]->kill();
+				}
+				break;
+
+			case ITEM_WEIGHT:
+				for (int i = 0; i < activeEnemies; ++i)
+				{
+					if (!enemies[i]->isAlive()) continue;
+					glm::ivec2 ePos = enemies[i]->getPosition();
+					int dx = abs(ePos.x - playerPos.x);
+					int dy = ePos.y - playerPos.y;
+					if (dx < ts * 3 && dy > 0 && dy < ts * 8)
+						enemies[i]->kill();
+				}
+				break;
+			}
+		}
+
+		if (Game::instance().getKey(GLFW_KEY_UP) && playerOnSecretDoor(playerPos, playerSize))
+			beginEnterSecretRoom();
+
+		if (keysCollected >= keysRequired && map->isOnDoor(playerPos, playerSize))
+			levelComplete = true;
 	}
 
-	// Use carried item (Z key)
-	if (hasItem && Game::instance().getKey(GLFW_KEY_Z))
-	{
-		hasItem = false;
-		switch (carriedItem)
-		{
-		case ITEM_CLOCK:
-			enemiesFrozen = true;
-			freezeTimer   = 5000.f;
-			break;
-
-		case ITEM_BOOTS:
-			player->applyBoots(5000);
-			break;
-
-		case ITEM_BOMB:
-			for (int i = 0; i < activeEnemies; ++i)
-			{
-				if (!enemies[i]->isAlive()) continue;
-				glm::ivec2 diff = enemies[i]->getPosition() - playerPos;
-				if (abs(diff.x) < 3 * ts && abs(diff.y) < 3 * ts)
-					enemies[i]->kill();
-			}
-			break;
-
-		case ITEM_WEIGHT:
-			for (int i = 0; i < activeEnemies; ++i)
-			{
-				if (!enemies[i]->isAlive()) continue;
-				glm::ivec2 ePos = enemies[i]->getPosition();
-				int dx = abs(ePos.x - playerPos.x);
-				int dy = ePos.y - playerPos.y;
-				if (dx < ts * 3 && dy > 0 && dy < ts * 8)
-					enemies[i]->kill();
-			}
-			break;
-		}
-	}
-
-	if (keysCollected >= keysRequired && map->isOnDoor(playerPos, playerSize))
-		levelComplete = true;
+	if (player->getLives() <= 0)
+		gameOver = true;
 }
 
 void Scene::render()
@@ -554,32 +663,57 @@ void Scene::render()
 
 	map->render();
 
-	const int ts = map->getTileSize();
-	// Render uncollected keys in the world
 	for (int i = 0; i < keysRequired; ++i)
 	{
 		if (keys[i].collected) continue;
-		texProgram.setUniform4f("color", 1.f, 1.f, 0.f, 1.f);
-		glm::ivec2 off((ts - keyWorldPixelSize) / 2, (ts - keyWorldPixelSize) / 2);
-		keyWorldSprite->setPosition(glm::vec2(keys[i].pos + off));
+		texProgram.setUniform4f("color", 1.f, 1.f, 1.f, 1.f);
+		keyWorldSprite->setPosition(glm::vec2(keys[i].pos));
 		keyWorldSprite->render();
 	}
 	texProgram.setUniform4f("color", 1.f, 1.f, 1.f, 1.f);
 
-	// Render uncollected items in the world
-	for (int i = 0; i < itemCount; ++i)
+	if (!inSecretRoom)
 	{
-		if (items[i].collected) continue;
-		itemSprite->changeAnimation(int(items[i].type));
-		itemSprite->setPosition(glm::vec2(items[i].pos));
+		for (int i = 0; i < itemCount; ++i)
+		{
+			if (items[i].collected) continue;
+			itemSprite->changeAnimation(int(items[i].type));
+			itemSprite->setPosition(glm::vec2(items[i].pos));
+			itemSprite->render();
+		}
+	}
+	else if (!secretLootTaken)
+	{
+		itemSprite->changeAnimation(int(secretLoot.type));
+		itemSprite->setPosition(glm::vec2(secretLoot.pos));
 		itemSprite->render();
 	}
 
 	player->render();
 
-	for (int i = 0; i < activeEnemies; ++i)
-		if (enemies[i]->isAlive())
-			enemies[i]->render();
+	if (player->isGodMode() && !inSecretRoom)
+	{
+		const glm::ivec2 pp = player->getPosition();
+		const int ps = player->getSpriteSize().x;
+		const float t = currentTime * 0.004f;
+		for (int i = 0; i < 3; ++i)
+		{
+			float ang = t + float(i) * (2.f * float(M_PI) / 3.f);
+			glm::vec2 orb(pp.x + std::cos(ang) * 26.f + ps / 2.f - 7.f,
+			              pp.y + std::sin(ang) * 16.f + ps / 2.f - 7.f);
+			texProgram.setUniform4f("color", 1.f, 0.92f, 0.35f, 0.85f);
+			godAuraSprites[i]->setPosition(orb);
+			godAuraSprites[i]->render();
+		}
+		texProgram.setUniform4f("color", 1.f, 1.f, 1.f, 1.f);
+	}
+
+	if (!inSecretRoom)
+	{
+		for (int i = 0; i < activeEnemies; ++i)
+			if (enemies[i]->isAlive())
+				enemies[i]->render();
+	}
 
 	renderHUD();
 }
@@ -611,20 +745,17 @@ void Scene::renderHUD()
 		heartSprite->render();
 	}
 
-	// Key counter
-	float ky = HUD_MARGIN + HUD_SPACING;
-	for (int i = 0; i < keysRequired; ++i)
+	// Keys collected (0–3) — single icon from items atlas + digit
 	{
-		if (keys[i].collected)
-			texProgram.setUniform4f("color", 1.f, 1.f, 0.f, 1.f);
-		else
-			texProgram.setUniform4f("color", 0.35f, 0.35f, 0.35f, 0.6f);
-
-		keySprite->setPosition(glm::vec2(HUD_MARGIN + i * HUD_SPACING, ky));
-		keySprite->render();
+		float ky = HUD_MARGIN + HUD_SPACING;
+		texProgram.setUniform4f("color", 1.f, 1.f, 1.f, 1.f);
+		keyHudSprite->setPosition(glm::vec2(HUD_MARGIN, ky));
+		keyHudSprite->render();
+		char buf[8];
+		snprintf(buf, sizeof(buf), "%d", keysCollected);
+		Game::instance().renderBitmapTextHud(buf, HUD_MARGIN + 28.f, ky + 2.f, 4.f, 1.f, 0.95f, 0.35f);
 	}
 
-	// Carried item indicator (bottom-left)
 	if (hasItem)
 	{
 		texProgram.setUniform4f("color", 1.f, 1.f, 1.f, 1.f);
@@ -633,22 +764,92 @@ void Scene::renderHUD()
 		itemHudSprite->render();
 	}
 
-	// God mode indicator
 	if (player->isGodMode())
 	{
-		texProgram.setUniform4f("color", 0.f, 1.f, 0.f, 0.7f);
-		heartSprite->setPosition(glm::vec2(640.f - HUD_MARGIN - HUD_ICON_SIZE, HUD_MARGIN));
-		heartSprite->render();
+		texProgram.setUniform4f("color", 1.f, 1.f, 1.f, 1.f);
+		godHudSprite->setPosition(glm::vec2(640.f - HUD_MARGIN - HUD_ICON_SIZE, HUD_MARGIN));
+		godHudSprite->render();
 	}
 
 	texProgram.setUniform4f("color", 1.f, 1.f, 1.f, 1.f);
 	glDisable(GL_BLEND);
 
-	// Restore game projection for subsequent draw calls
 	texProgram.setUniformMatrix4f("projection", projection);
 }
 
 // ---------------------------------------------------------------------------
+
+void Scene::markSecretDoorTiles(int level)
+{
+	switch (level)
+	{
+	case 1:
+		for (int t : {33, 36, 41})
+			map->setTileType(t, TILE_SECRET);
+		break;
+	case 2:
+	case 4:
+	case 5:
+		for (int t : {24, 43, 51})
+			map->setTileType(t, TILE_SECRET);
+		break;
+	default:
+		break;
+	}
+}
+
+bool Scene::playerOnSecretDoor(const glm::ivec2 &playerPos, const glm::ivec2 &playerSize) const
+{
+	const int ts = map->getTileSize();
+	glm::ivec2 c((playerPos.x + playerSize.x / 2) / ts,
+	             (playerPos.y + playerSize.y / 2) / ts);
+	if (levelIndex == 3)
+	{
+		const glm::ivec2 pts[] = {glm::ivec2(8, 12), glm::ivec2(12, 7), glm::ivec2(14, 4)};
+		for (const auto &p : pts)
+			if (c == p)
+				return true;
+		return false;
+	}
+	return map->isOnSecret(playerPos, playerSize);
+}
+
+void Scene::beginEnterSecretRoom()
+{
+	if (inSecretRoom || secretAnimTimer > 0 || secretEnterPending || secretExitCooldown > 0)
+		return;
+	secretReturnPos = player->getPosition();
+	secretAnimTimer = 450;
+	secretEnterPending = true;
+	player->playDoorEnterAnim();
+}
+
+void Scene::finishEnterSecretRoom()
+{
+	secretMap = TileMap::createTileMap("levels/secret_room.txt", glm::vec2(SCREEN_X, SCREEN_Y), texProgram);
+	applySecretRoomTileTypes(secretMap);
+	map = secretMap;
+	player->setTileMap(map);
+	inSecretRoom = true;
+	const int sts = map->getTileSize();
+	player->setPosition(glm::vec2(3.f * sts, 6.f * sts));
+	secretLoot       = {ITEM_CLOCK, glm::ivec2(5 * sts + 4, 4 * sts + 4), false};
+	secretLootTaken  = false;
+}
+
+void Scene::exitSecretRoom()
+{
+	if (!secretMap)
+		return;
+	delete secretMap;
+	secretMap = NULL;
+	map = mainMap;
+	player->setTileMap(map);
+	player->setPosition(glm::vec2(secretReturnPos));
+	inSecretRoom = false;
+	secretExitCooldown = 500;
+	player->playDoorExitAnim();
+}
 
 void Scene::setGodMode(bool g)
 {

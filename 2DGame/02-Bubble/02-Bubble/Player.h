@@ -29,6 +29,8 @@ public:
 
 	void setGodMode(bool g)  { godMode = g; }
 	void applyBoots(int ms)  { bootTimer = ms; }
+	void playDoorEnterAnim();
+	void playDoorExitAnim();
 
 	void startElevatorEnter();
 	void startElevatorExit(const glm::ivec2 &exitPos);

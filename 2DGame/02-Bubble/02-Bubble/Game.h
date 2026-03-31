@@ -59,6 +59,10 @@ public:
 	void changeState(GameState s);
 	void loadLevel(int n);
 
+	// HUD overlay (screen coords, 640x480 ortho) — used by Scene
+	void renderBitmapTextHud(const char *text, float x, float y, float pixel,
+	                           float r, float g, float b);
+
 private:
 	void initUI();
 	void renderUI(Texture &tex);
@@ -69,7 +73,8 @@ private:
 	                        float u0, float v0, float u1, float v1);
 	void renderSubrectFitted(Texture &tex, float x, float y, float boxW, float boxH,
 	                         int texW, int texH,
-	                         float px0, float py0, float px1, float py1);
+	                         float px0, float py0, float px1, float py1,
+	                         float stretchX = 1.f, float stretchY = 1.f);
 	void renderBitmapTextCenter(const char *text, float cx, float cy, float pixel,
 	                            float r, float g, float b);
 	float measureBitmapTextWidth(const char *text, float pixel);
@@ -83,6 +88,7 @@ private:
 
 	GameState state, previousState;
 	int currentLevel;
+	int previousLevel;
 	bool godMode;
 
 	Scene scene;

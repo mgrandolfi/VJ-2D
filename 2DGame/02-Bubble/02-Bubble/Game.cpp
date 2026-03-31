@@ -18,18 +18,17 @@ Mix_Music* musicWin;
 Mix_Music* musicPause;
 Mix_Music* musicCredits;
 
-GameState previousState;
-int previousLevel;
+// Button slots on menu.png (640x480) — inner dark panels between gold rails ~x214–424
+static const float MENU_BTN_X = 222.f;
+static const float MENU_BTN_W = 196.f;
+static const float MENU_BTN_H = 55.f;
+static const float MENU_BTN_Y[] = { 160.f, 265.f, 365.f };
 
-static const float MENU_BTN_X = 172.f;
-static const float MENU_BTN_W = 296.f;
-static const float MENU_BTN_H = 52.f;
-static const float MENU_BTN_Y[] = { 204.f, 282.f, 360.f };
-
-static const float INSTR_BTN_X = 208.f;
-static const float INSTR_BTN_Y = 400.f;
-static const float INSTR_BTN_W = 224.f;
-static const float INSTR_BTN_H = 48.f;
+// Instructions — inner panel of bottom gold frame (below y≈436 bar, above y≈475)
+static const float INSTR_BTN_X = 258.f;
+static const float INSTR_BTN_Y = 440.f;
+static const float INSTR_BTN_W = 126.f;
+static const float INSTR_BTN_H = 34.f;
 
 static const float PAUSE_ROW_X = 100.f;
 static const float PAUSE_ROW_W = 440.f;
@@ -47,7 +46,12 @@ namespace {
 const uint8_t G_A[] = {0x0E, 0x11, 0x11, 0x1F, 0x11, 0x11, 0x11};
 const uint8_t G_B[] = {0x0E, 0x11, 0x11, 0x0E, 0x11, 0x11, 0x0E};
 const uint8_t G_C[] = {0x0E, 0x11, 0x10, 0x10, 0x10, 0x11, 0x0E};
-const uint8_t G_D[] = {0x0E, 0x11, 0x11, 0x11, 0x11, 0x11, 0x0E};
+// Flat left spine, open right — reads as D (not O)
+const uint8_t G_D[] = {0x1E, 0x11, 0x11, 0x11, 0x11, 0x11, 0x1E};
+const uint8_t G_0[] = {0x0E, 0x11, 0x11, 0x11, 0x11, 0x11, 0x0E};
+const uint8_t G_1[] = {0x04, 0x0C, 0x04, 0x04, 0x04, 0x04, 0x0E};
+const uint8_t G_2[] = {0x0E, 0x11, 0x01, 0x02, 0x04, 0x08, 0x1F};
+const uint8_t G_3[] = {0x1F, 0x02, 0x04, 0x02, 0x01, 0x11, 0x0E};
 const uint8_t G_E[] = {0x1F, 0x10, 0x10, 0x1E, 0x10, 0x10, 0x1F};
 const uint8_t G_H[] = {0x11, 0x11, 0x11, 0x1F, 0x11, 0x11, 0x11};
 const uint8_t G_I[] = {0x0E, 0x04, 0x04, 0x04, 0x04, 0x04, 0x0E};
@@ -62,6 +66,14 @@ const uint8_t G_S[] = {0x1F, 0x10, 0x10, 0x0E, 0x01, 0x01, 0x1E};
 const uint8_t G_T[] = {0x1F, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04};
 const uint8_t G_U[] = {0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x0E};
 const uint8_t G_X[] = {0x11, 0x11, 0x0A, 0x04, 0x0A, 0x11, 0x11};
+const uint8_t G_F[] = {0x1E, 0x10, 0x10, 0x1C, 0x10, 0x10, 0x10};
+const uint8_t G_G[] = {0x0E, 0x11, 0x10, 0x17, 0x11, 0x11, 0x0E};
+const uint8_t G_J[] = {0x04, 0x04, 0x04, 0x04, 0x04, 0x11, 0x0E};
+const uint8_t G_Q[] = {0x0E, 0x11, 0x11, 0x11, 0x15, 0x12, 0x0D};
+const uint8_t G_Z[] = {0x1F, 0x01, 0x02, 0x04, 0x08, 0x10, 0x1F};
+const uint8_t G_V[] = {0x11, 0x11, 0x11, 0x11, 0x11, 0x0A, 0x04};
+const uint8_t G_W[] = {0x11, 0x11, 0x11, 0x15, 0x15, 0x15, 0x0A};
+const uint8_t G_Y[] = {0x11, 0x11, 0x0A, 0x04, 0x04, 0x04, 0x04};
 
 const uint8_t *glyphLookup(char c)
 {
@@ -72,6 +84,18 @@ const uint8_t *glyphLookup(char c)
 	case 'C': return G_C;
 	case 'D': return G_D;
 	case 'E': return G_E;
+	case 'F': return G_F;
+	case 'G': return G_G;
+	case 'J': return G_J;
+	case 'Q': return G_Q;
+	case 'Z': return G_Z;
+	case 'V': return G_V;
+	case 'W': return G_W;
+	case 'Y': return G_Y;
+	case '0': return G_0;
+	case '1': return G_1;
+	case '2': return G_2;
+	case '3': return G_3;
 	case 'H': return G_H;
 	case 'I': return G_I;
 	case 'K': return G_K;
@@ -296,8 +320,10 @@ void Game::renderTexturedRect(Texture &tex, float x, float y, float w, float h,
 }
 
 void Game::renderSubrectFitted(Texture &tex, float x, float y, float boxW, float boxH,
-                            int texW, int texH,
-                            float px0, float py0, float px1, float py1)
+                               int texW, int texH,
+                               float px0, float py0, float px1, float py1,
+                               float stretchX,
+                               float stretchY)
 {
 	float cw = px1 - px0;
 	float ch = py1 - py0;
@@ -316,6 +342,18 @@ void Game::renderSubrectFitted(Texture &tex, float x, float y, float boxW, float
 	{
 		dh = bh;
 		dw = bh * aspect;
+	}
+	if (stretchX != 1.f)
+	{
+		dw *= stretchX;
+		if (dw > bw)
+			dw = bw;
+	}
+	if (stretchY != 1.f)
+	{
+		dh *= stretchY;
+		if (dh > bh)
+			dh = bh;
 	}
 	float ox = x + (boxW - dw) * 0.5f;
 	float oy = y + (boxH - dh) * 0.5f;
@@ -375,6 +413,23 @@ void Game::renderBitmapTextCenter(const char *text, float cx, float cy, float pi
 	}
 }
 
+void Game::renderBitmapTextHud(const char *text, float x, float y, float pixel,
+                               float r, float g, float b)
+{
+	float y0 = y;
+	for (const char *t = text; *t; ++t)
+	{
+		if (*t == ' ')
+		{
+			x += 4.f * pixel;
+			continue;
+		}
+		const uint8_t *gr = glyphLookup(*t);
+		drawGlyphRows(gr, x, y0, pixel, r, g, b);
+		x += 6.f * pixel;
+	}
+}
+
 void Game::changeState(GameState s)
 {
 	state = s;
@@ -422,7 +477,8 @@ void Game::render()
 		renderSubrectFitted(btnPlayTex, MENU_BTN_X + 4.f, MENU_BTN_Y[0] + 4.f,
 		                    MENU_BTN_W - 8.f, MENU_BTN_H - 8.f,
 		                    506, 274,
-		                    BTN_PLAY_CROP[0], BTN_PLAY_CROP[1], BTN_PLAY_CROP[2], BTN_PLAY_CROP[3]);
+		                    BTN_PLAY_CROP[0], BTN_PLAY_CROP[1], BTN_PLAY_CROP[2], BTN_PLAY_CROP[3],
+		                    1.22f, 1.f);
 		renderSubrectFitted(btnInstrTex, MENU_BTN_X + 4.f, MENU_BTN_Y[1] + 4.f,
 		                    MENU_BTN_W - 8.f, MENU_BTN_H - 8.f,
 		                    640, 476,
@@ -471,23 +527,14 @@ void Game::render()
 
 	case STATE_INSTRUCTIONS:
 		renderUI(instructionsTex);
-		renderSubrectFitted(btnBackTex, INSTR_BTN_X + 6.f, INSTR_BTN_Y + 6.f,
-		                    INSTR_BTN_W - 12.f, INSTR_BTN_H - 12.f,
-		                    582, 217,
-		                    BTN_BACK_CROP[0], BTN_BACK_CROP[1], BTN_BACK_CROP[2], BTN_BACK_CROP[3]);
-		renderBitmapTextCenter("BACK TO MAIN MENU", 320.f, INSTR_BTN_Y + INSTR_BTN_H + 22.f,
-		                    3.2f, 1.f, 0.95f, 0.4f);
 		if (instrBackHover)
 			renderColorQuad(INSTR_BTN_X, INSTR_BTN_Y, INSTR_BTN_W, INSTR_BTN_H,
 			                1.f, 0.85f, 0.f, 0.12f);
-		renderColorQuad(INSTR_BTN_X - 2.f, INSTR_BTN_Y - 2.f,
-		                INSTR_BTN_W + 4.f, 2.f, 1.f, 0.85f, 0.f, 1.f);
-		renderColorQuad(INSTR_BTN_X - 2.f, INSTR_BTN_Y + INSTR_BTN_H,
-		                INSTR_BTN_W + 4.f, 2.f, 1.f, 0.85f, 0.f, 1.f);
-		renderColorQuad(INSTR_BTN_X - 2.f, INSTR_BTN_Y,
-		                2.f, INSTR_BTN_H, 1.f, 0.85f, 0.f, 1.f);
-		renderColorQuad(INSTR_BTN_X + INSTR_BTN_W, INSTR_BTN_Y,
-		                2.f, INSTR_BTN_H, 1.f, 0.85f, 0.f, 1.f);
+		renderSubrectFitted(btnBackTex, INSTR_BTN_X + 2.f, INSTR_BTN_Y + 2.f,
+		                    INSTR_BTN_W - 4.f, INSTR_BTN_H - 4.f,
+		                    582, 217,
+		                    BTN_BACK_CROP[0], BTN_BACK_CROP[1], BTN_BACK_CROP[2], BTN_BACK_CROP[3],
+		                    1.18f, 1.18f);
 		break;
 
 	case STATE_CREDITS:
