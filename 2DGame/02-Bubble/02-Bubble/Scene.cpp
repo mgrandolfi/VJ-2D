@@ -294,19 +294,21 @@ void Scene::initMap(int level)
 		warpTiles = { glm::ivec2(19, 14), glm::ivec2(15, 12) };
 	}
 	else if (level == 4) {
-		// tileBlocks  = {0, 1, 9};
-		// tileLadders = {2};
+		tileBlocks  = {2, 3, 21};
 		// tileDoors   = {3};
-		// tileJumps   = {4};
-		// tileWarps   = {5};
+		tileJumps   = {23};
+		tileWarps   = {20};
+		tileCliffs  = {7, 8, 28};
+		warpTiles = { glm::ivec2(15, 18), glm::ivec2(17, 7) }; 
 	}
 	else if (level == 5) {
-		// tileBlocks  = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14,
-		// 			15, 16, 17, 18, 19, 20, 21, 22, 23};
-		// tileLadders = {24};
+		tileBlocks  = {2, 3, 4, 6, 7, 8, 31, 32, 33, 34, 35, 62, 63, 91};
+		tileLadders = {38, 60, 90};
 		// tileDoors   = {25};
-		// tileJumps   = {26};
-		// tileWarps   = {27};
+		tileJumps   = {64};
+		tileWarps   = {36, 61, 65};
+		tileCliffs  = {66, 67, 68, 69, 71, 92};
+		warpTiles = { glm::ivec2(15, 18), glm::ivec2(17, 7) }; 
 	}
 	applyTileTypes();
 	markSecretDoorTiles(level);
@@ -336,7 +338,7 @@ void Scene::recreateWorldPickupSprites(int ts)
 
 	const glm::vec2 cell(0.2f, 0.5f);
 	keyWorldSprite = Sprite::createSprite(glm::ivec2(keyWorldPixelSize, keyWorldPixelSize),
-	                                      cell, &itemTex, &texProgram);
+	                                    cell, &itemTex, &texProgram);
 	keyWorldSprite->setNumberAnimations(1);
 	keyWorldSprite->setAnimationSpeed(0, 1);
 	keyWorldSprite->addKeyframe(0, glm::vec2(0.8f, 0.f));
