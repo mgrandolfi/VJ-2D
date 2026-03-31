@@ -459,7 +459,7 @@ bool Game::update(int deltaTime)
 		default:
 			break;
 	}
-	updateMusic();
+	//updateMusic();
 	return bPlay;
 }
 
