@@ -30,6 +30,12 @@ public:
 	void setGodMode(bool g)  { godMode = g; }
 	void applyBoots(int ms)  { bootTimer = ms; }
 
+	void startElevatorEnter();
+	void startElevatorExit(const glm::ivec2 &exitPos);
+	bool isEnteringElevator() const { return elevatorEntering; }
+	bool isExitingElevator()  const { return elevatorExiting;  }
+	bool isInElevator()       const { return elevatorEntering || elevatorExiting; }
+
 private:
 	glm::ivec2  tileMapDispl, posPlayer;
 	int         spriteSize;      // world-unit size (= tileSize)
@@ -50,6 +56,11 @@ private:
 	int         bootTimer;       // ms remaining for speed boost
 	int         hurtTimer;       // ms of post-hit invincibility
 	int         livesPlayer;
+
+	// Elevator state
+	bool        elevatorEntering;
+	bool        elevatorExiting;
+	float       elevatorTimer;
 
 	// Graphics
 	Texture     spritesheet;

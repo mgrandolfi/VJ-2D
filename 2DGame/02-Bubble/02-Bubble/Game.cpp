@@ -5,27 +5,37 @@
 #include <cstring>
 #include <cctype>
 #include "Game.h"
+#include <SDL2/SDL.h>      
+#include <SDL2/SDL_mixer.h>
 
+Mix_Music* musicMenu;
+Mix_Music* musicLevel1;
+Mix_Music* musicLevel2;
+Mix_Music* musicLevel3;
+Mix_Music* musicLevel4;
+Mix_Music* musicLevel5;
+Mix_Music* musicWin;
+Mix_Music* musicPause;
+Mix_Music* musicCredits;
 
-// Button slots on menu.png (640x480)
+GameState previousState;
+int previousLevel;
+
 static const float MENU_BTN_X = 172.f;
 static const float MENU_BTN_W = 296.f;
 static const float MENU_BTN_H = 52.f;
 static const float MENU_BTN_Y[] = { 204.f, 282.f, 360.f };
 
-// Instructions — bottom gold frame (tuned to instructions.png)
 static const float INSTR_BTN_X = 208.f;
 static const float INSTR_BTN_Y = 400.f;
 static const float INSTR_BTN_W = 224.f;
 static const float INSTR_BTN_H = 48.f;
 
-// Pause — hit boxes for three options (bitmap labels drawn centered in each row)
 static const float PAUSE_ROW_X = 100.f;
 static const float PAUSE_ROW_W = 440.f;
 static const float PAUSE_ROW_H = 44.f;
 static const float PAUSE_ROW_Y[] = { 196.f, 264.f, 332.f };
 
-// Pixel crops inside each PNG (top-left origin) for label art only
 static const float BTN_PLAY_CROP[] = { 157.f, 94.f, 353.f, 179.f };       // 506x274
 static const float BTN_INSTR_CROP[] = { 134.f, 217.f, 506.f, 258.f };     // 640x476
 static const float BTN_CRED_CROP[] = { 67.f, 101.f, 418.f, 160.f };       // 486x263
@@ -79,7 +89,7 @@ const uint8_t *glyphLookup(char c)
 	}
 }
 
-} // namespace
+} 
 
 
 void Game::init()
@@ -99,6 +109,22 @@ void Game::init()
 
 	scene.initShaders();
 	initUI();
+
+	SDL_Init(SDL_INIT_AUDIO);
+	Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 2048);
+
+	musicMenu    = Mix_LoadMUS("sound/menu.mp3");
+	musicLevel1  = Mix_LoadMUS("sound/level1.mp3");
+	musicLevel2  = Mix_LoadMUS("sound/level2.mp3");
+	musicLevel3  = Mix_LoadMUS("sound/level3.mp3");
+	musicLevel4  = Mix_LoadMUS("sound/level4.mp3");
+	musicLevel5  = Mix_LoadMUS("sound/level5.mp3");
+	musicPause   = Mix_LoadMUS("sound/pause.mp3");
+	musicWin     = Mix_LoadMUS("sound/win.mp3");
+	musicCredits = Mix_LoadMUS("sound/credits.mp3");
+
+	previousState = (GameState)-1;
+	previousLevel = -1;
 }
 
 void Game::initUI()
@@ -270,8 +296,8 @@ void Game::renderTexturedRect(Texture &tex, float x, float y, float w, float h,
 }
 
 void Game::renderSubrectFitted(Texture &tex, float x, float y, float boxW, float boxH,
-                               int texW, int texH,
-                               float px0, float py0, float px1, float py1)
+                            int texW, int texH,
+                            float px0, float py0, float px1, float py1)
 {
 	float cw = px1 - px0;
 	float ch = py1 - py0;
@@ -301,7 +327,7 @@ void Game::renderSubrectFitted(Texture &tex, float x, float y, float boxW, float
 }
 
 void Game::drawGlyphRows(const uint8_t *rows, float x, float y, float ps,
-                         float r, float g, float b)
+                        float r, float g, float b)
 {
 	if (!rows)
 		return;
@@ -330,7 +356,7 @@ float Game::measureBitmapTextWidth(const char *text, float pixel)
 }
 
 void Game::renderBitmapTextCenter(const char *text, float cx, float cy, float pixel,
-                                  float r, float g, float b)
+                                float r, float g, float b)
 {
 	float w = measureBitmapTextWidth(text, pixel);
 	float x0 = cx - w * 0.5f;
@@ -365,23 +391,20 @@ bool Game::update(int deltaTime)
 {
 	switch (state)
 	{
-	case STATE_PLAYING:
-		scene.update(deltaTime);
-		if (scene.isGameOver())
-			state = STATE_MENU;
-		else if (scene.isLevelComplete())
-		{
-			if (currentLevel < 5)
+		case STATE_PLAYING:
+			scene.update(deltaTime);
+			if (scene.isGameOver()) state = STATE_MENU;
+			else if (scene.isLevelComplete())
+			{
+				if (currentLevel < 5)
 				loadLevel(currentLevel + 1);
-			else
-				state = STATE_WIN;
-		}
-		break;
-
-	default:
-		break;
+				else state = STATE_WIN;
+			}
+			break;
+		default:
+			break;
 	}
-
+	updateMusic();
 	return bPlay;
 }
 
@@ -427,11 +450,11 @@ void Game::render()
 		renderColorQuad(0.f, 0.f, 640.f, 480.f, 0.f, 0.f, 0.f, 0.55f);
 		renderBitmapTextCenter("PAUSED", 320.f, 88.f, 5.f, 1.f, 1.f, 1.f);
 		renderBitmapTextCenter("CONTINUE", 320.f, PAUSE_ROW_Y[0] + PAUSE_ROW_H * 0.5f, 4.f,
-		                       1.f, 1.f, 1.f);
+		                    1.f, 1.f, 1.f);
 		renderBitmapTextCenter("RESTART", 320.f, PAUSE_ROW_Y[1] + PAUSE_ROW_H * 0.5f, 4.f,
-		                       1.f, 1.f, 1.f);
+		                    1.f, 1.f, 1.f);
 		renderBitmapTextCenter("EXIT", 320.f, PAUSE_ROW_Y[2] + PAUSE_ROW_H * 0.5f, 4.f,
-		                       1.f, 1.f, 1.f);
+		                    1.f, 1.f, 1.f);
 		renderColorQuad(PAUSE_ROW_X - 2.f, PAUSE_ROW_Y[pauseSelection] - 2.f,
 		                PAUSE_ROW_W + 4.f, 2.f, 1.f, 0.85f, 0.f, 1.f);
 		renderColorQuad(PAUSE_ROW_X - 2.f, PAUSE_ROW_Y[pauseSelection] + PAUSE_ROW_H,
@@ -453,7 +476,7 @@ void Game::render()
 		                    582, 217,
 		                    BTN_BACK_CROP[0], BTN_BACK_CROP[1], BTN_BACK_CROP[2], BTN_BACK_CROP[3]);
 		renderBitmapTextCenter("BACK TO MAIN MENU", 320.f, INSTR_BTN_Y + INSTR_BTN_H + 22.f,
-		                       3.2f, 1.f, 0.95f, 0.4f);
+		                    3.2f, 1.f, 0.95f, 0.4f);
 		if (instrBackHover)
 			renderColorQuad(INSTR_BTN_X, INSTR_BTN_Y, INSTR_BTN_W, INSTR_BTN_H,
 			                1.f, 0.85f, 0.f, 0.12f);
@@ -588,7 +611,7 @@ void Game::mouseMove(int x, int y)
 	else if (state == STATE_INSTRUCTIONS)
 	{
 		instrBackHover = (x >= INSTR_BTN_X && x <= INSTR_BTN_X + INSTR_BTN_W &&
-		                  y >= INSTR_BTN_Y && y <= INSTR_BTN_Y + INSTR_BTN_H);
+		                y >= INSTR_BTN_Y && y <= INSTR_BTN_Y + INSTR_BTN_H);
 	}
 }
 
@@ -651,4 +674,49 @@ bool Game::getKey(int key) const
 {
 	if (key < 0 || key > GLFW_KEY_LAST) return false;
 	return keys[key];
+}
+
+void Game::updateMusic()
+{
+	if(state != previousState || currentLevel != previousLevel)
+	{
+		Mix_HaltMusic();
+
+		switch(state)
+		{
+		case STATE_MENU:
+			Mix_PlayMusic(musicMenu,-1);
+			break;
+
+		case STATE_PLAYING:
+			switch(currentLevel)
+			{
+			case 1: Mix_PlayMusic(musicLevel1,-1); break;
+			case 2: Mix_PlayMusic(musicLevel2,-1); break;
+			case 3: Mix_PlayMusic(musicLevel3,-1); break;
+			case 4: Mix_PlayMusic(musicLevel4,-1); break;
+			case 5: Mix_PlayMusic(musicLevel5,-1); break;
+			}
+			break;
+
+		case STATE_PAUSED:
+			Mix_PlayMusic(musicPause,-1);
+			break;
+
+		case STATE_WIN:
+			Mix_PlayMusic(musicWin,-1);
+			break;
+
+		case STATE_CREDITS:
+			Mix_PlayMusic(musicCredits,-1);
+			break;
+
+		default:
+			Mix_HaltMusic();
+			break;
+		}
+
+		previousState = state;
+		previousLevel = currentLevel;
+	}
 }

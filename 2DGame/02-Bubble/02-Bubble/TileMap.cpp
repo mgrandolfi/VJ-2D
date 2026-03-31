@@ -10,7 +10,7 @@ using namespace std;
 // Solid for movement (jump pads must be walkable, not only decorative)
 static bool tileBlocksMovement(TileType t)
 {
-	return t == TILE_BLOCK || t == TILE_JUMP;
+	return t == TILE_BLOCK || t == TILE_JUMP || t == TILE_ELEVATOR;
 }
 
 
@@ -24,7 +24,7 @@ TileMap *TileMap::createTileMap(const string &levelFile, const glm::vec2 &minCoo
 
 TileMap::TileMap(const string &levelFile, const glm::vec2 &minCoords, ShaderProgram &program)
 {
-	map = NULL;
+	map         = NULL;
 	tileTypeMap = NULL;
 	nTiles = 0;
 	vao = 0;
@@ -100,15 +100,13 @@ bool TileMap::loadLevel(const string &levelFile)
 
 	totalTilesMap = tilesheetSize.x * tilesheetSize.y;
 	tileTypeMap = new TileType[totalTilesMap];
+	for (int i = 0; i < totalTilesMap; ++i)
+		tileTypeMap[i] = (i == 0) ? TILE_BLOCK : TILE_EMPTY;
 
-	for (int i = 0; i < totalTilesMap; ++i) {
-		if (i == 0) tileTypeMap[i] = TILE_BLOCK;
-		else tileTypeMap[i] = TILE_EMPTY;
-	}
-	
 	tileTexSize = glm::vec2(1.f / tilesheetSize.x, 1.f / tilesheetSize.y);
-	
+
 	map = new int[mapSize.x * mapSize.y];
+
 	for(int j=0; j<mapSize.y; j++)
 	{
 		for(int i=0; i<mapSize.x; i++)
@@ -185,8 +183,7 @@ bool TileMap::collisionMoveLeft(const glm::ivec2 &pos, const glm::ivec2 &size,
 	for (int y = y0; y <= y1; y++)
 	{
 		int tile = map[y * mapSize.x + x];
-		if (tile < 0 || tile >= totalTilesMap)
-			continue;
+		if (tile < 0 || tile >= totalTilesMap) continue;
 		TileType tt = tileTypeMap[tile];
 		if (tileBlocksMovement(tt) || (blockLadders && tt == TILE_LADDER))
 			return true;
@@ -208,8 +205,7 @@ bool TileMap::collisionMoveRight(const glm::ivec2 &pos, const glm::ivec2 &size,
 	for (int y = y0; y <= y1; y++)
 	{
 		int tile = map[y * mapSize.x + x];
-		if (tile < 0 || tile >= totalTilesMap)
-			continue;
+		if (tile < 0 || tile >= totalTilesMap) continue;
 		TileType tt = tileTypeMap[tile];
 		if (tileBlocksMovement(tt) || (blockLadders && tt == TILE_LADDER))
 			return true;
@@ -281,10 +277,10 @@ TileType TileMap::tileTypeAt(int worldX, int worldY) const
 {
 	int tx = worldX / tileSize;
 	int ty = worldY / tileSize;
-	if(tx < 0 || tx >= mapSize.x || ty < 0 || ty >= mapSize.y)
+	if (tx < 0 || tx >= mapSize.x || ty < 0 || ty >= mapSize.y)
 		return TILE_EMPTY;
 	int tile = map[ty * mapSize.x + tx];
-	if(tile < 0 || tile >= totalTilesMap)
+	if (tile < 0 || tile >= totalTilesMap)
 		return TILE_EMPTY;
 	return tileTypeMap[tile];
 }
@@ -343,5 +339,42 @@ bool TileMap::isOnWarp(const glm::ivec2 &pos, const glm::ivec2 &size) const
 	int cx = pos.x + size.x / 2;
 	int cy = pos.y + size.y / 2;
 	return tileTypeAt(cx, cy) == TILE_WARP;
+}
+
+// Returns the tile ID of the first TILE_ELEVATOR tile directly below the sprite,
+// or -1 if none found.
+int TileMap::getTileIdBelow(const glm::ivec2 &pos, const glm::ivec2 &size) const
+{
+	int x0 = pos.x / tileSize;
+	int x1 = (pos.x + size.x - 1) / tileSize;
+	int y  = (pos.y + size.y) / tileSize;  // row just below sprite bottom
+	if (y >= mapSize.y) return -1;
+	if (x0 < 0) x0 = 0;
+	if (x1 >= mapSize.x) x1 = mapSize.x - 1;
+	for (int x = x0; x <= x1; ++x)
+	{
+		int tile = map[y * mapSize.x + x];
+		if (tile >= 0 && tile < totalTilesMap && tileTypeMap[tile] == TILE_ELEVATOR)
+			return tile;
+	}
+	return -1;
+}
+
+// Returns the world-pixel top-left position of the first map cell with the given tile ID.
+// Returns (-1,-1) if not found.
+glm::ivec2 TileMap::findTileId(int tileId) const
+{
+	for (int j = 0; j < mapSize.y; ++j)
+		for (int i = 0; i < mapSize.x; ++i)
+			if (map[j * mapSize.x + i] == tileId)
+				return glm::ivec2(i * tileSize, j * tileSize);
+	return glm::ivec2(-1, -1);
+}
+
+int TileMap::getTileIdAt(int tx, int ty) const
+{
+	if (tx < 0 || tx >= mapSize.x || ty < 0 || ty >= mapSize.y)
+		return -1;
+	return map[ty * mapSize.x + tx];
 }
 

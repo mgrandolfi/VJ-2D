@@ -29,20 +29,23 @@ enum PlayerAnims
 
 Player::Player()
 {
-	sprite      = NULL;
-	map         = NULL;
-	spriteSize  = 32;
-	livesPlayer = 3;
-	isJumping   = false;
-	jumpAngle   = 0;
-	startY      = 0;
-	onGround    = false;
-	onLadder    = false;
-	facing      = 1;
-	godMode     = false;
-	bootTimer   = 0;
-	hurtTimer   = 0;
-	landAnimTimer = 0;
+	sprite           = NULL;
+	map              = NULL;
+	spriteSize       = 32;
+	livesPlayer      = 3;
+	isJumping        = false;
+	jumpAngle        = 0;
+	startY           = 0;
+	onGround         = false;
+	onLadder         = false;
+	facing           = 1;
+	godMode          = false;
+	bootTimer        = 0;
+	hurtTimer        = 0;
+	landAnimTimer    = 0;
+	elevatorEntering = false;
+	elevatorExiting  = false;
+	elevatorTimer    = 0.f;
 }
 
 Player::~Player()
@@ -53,18 +56,21 @@ Player::~Player()
 
 void Player::init(const glm::ivec2 &tileMapPos, ShaderProgram &shaderProgram, int tileSize)
 {
-	spriteSize  = tileSize;
-	livesPlayer = 3;
-	isJumping   = false;
-	jumpAngle   = 0;
-	startY      = 0;
-	onGround    = false;
-	onLadder    = false;
-	facing      = 1;
-	godMode     = false;
-	bootTimer   = 0;
-	hurtTimer   = 0;
-	landAnimTimer = 0;
+	spriteSize       = tileSize;
+	livesPlayer      = 3;
+	isJumping        = false;
+	jumpAngle        = 0;
+	startY           = 0;
+	onGround         = false;
+	onLadder         = false;
+	facing           = 1;
+	godMode          = false;
+	bootTimer        = 0;
+	hurtTimer        = 0;
+	landAnimTimer    = 0;
+	elevatorEntering = false;
+	elevatorExiting  = false;
+	elevatorTimer    = 0.f;
 
 	spritesheet.loadFromFile("images/characters/bugs.png", TEXTURE_PIXEL_FORMAT_RGBA);
 	spritesheetFast.loadFromFile("images/characters/bugs_fast.png", TEXTURE_PIXEL_FORMAT_RGBA);
@@ -171,9 +177,43 @@ void Player::init(const glm::ivec2 &tileMapPos, ShaderProgram &shaderProgram, in
 	tileMapDispl = tileMapPos;
 }
 
+void Player::startElevatorEnter()
+{
+	elevatorEntering = true;
+	elevatorExiting  = false;
+	elevatorTimer    = 500.f;
+	isJumping        = false;
+	sprite->changeAnimation(ENTER);
+}
+
+void Player::startElevatorExit(const glm::ivec2 &exitPos)
+{
+	posPlayer       = exitPos;
+	elevatorEntering = false;
+	elevatorExiting  = true;
+	elevatorTimer    = 500.f;
+	sprite->changeAnimation(EXIT);
+	sprite->setPosition(glm::vec2(float(tileMapDispl.x + posPlayer.x),
+	                              float(tileMapDispl.y + posPlayer.y)));
+}
+
 void Player::update(int deltaTime)
 {
 	sprite->update(deltaTime);
+
+	// Elevator transition: only update animation, block all movement
+	if (elevatorEntering || elevatorExiting)
+	{
+		elevatorTimer -= deltaTime;
+		if (elevatorTimer <= 0.f)
+		{
+			if (elevatorEntering) elevatorEntering = false;  // Scene calls startElevatorExit
+			else                  elevatorExiting  = false;  // resume normal
+		}
+		sprite->setPosition(glm::vec2(float(tileMapDispl.x + posPlayer.x),
+		                              float(tileMapDispl.y + posPlayer.y)));
+		return;
+	}
 
 	if (bootTimer > 0) bootTimer -= deltaTime;
 	if (hurtTimer > 0) hurtTimer -= deltaTime;

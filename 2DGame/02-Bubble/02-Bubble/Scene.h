@@ -18,6 +18,12 @@
 
 enum ItemType { ITEM_WEIGHT, ITEM_BOMB, ITEM_BOOTS, ITEM_CLOCK };
 
+struct ElevatorPair
+{
+	glm::ivec2 entryTile;  // map tile coordinates (col, row) of the entry
+	glm::ivec2 exitTile;   // map tile coordinates (col, row) of the exit
+};
+
 struct LevelItem
 {
 	ItemType type;
@@ -58,6 +64,7 @@ public:
 private:
 	void initMap(int level);
 	void applyTileTypes();
+	void applyElevatorPairs();
 	void spawnEntities(int level);
 	void recreateWorldPickupSprites(int tileSize);
 	void renderHUD();
@@ -72,7 +79,8 @@ private:
 	std::vector<int> tileDoors;
 	std::vector<int> tileJumps;
 	std::vector<int> tileWarps;
-	std::vector<int> tileElevators;
+	std::vector<int>          tileElevators;   // tile IDs to mark as TILE_ELEVATOR (still used for applyTileTypes)
+	std::vector<ElevatorPair> elevatorPairs;   // explicit entry/exit positions per level
 
 	TileMap       *map;
 	Player        *player;
@@ -104,6 +112,10 @@ private:
 	// Game state flags
 	bool           gameOver;
 	bool           levelComplete;
+
+	// Elevator state
+	bool           playerEnteringElevator;
+	glm::ivec2     elevatorExitPos;
 	bool           enemiesFrozen;
 	float          freezeTimer;
 	float          respawnTimer;   // countdown after death before respawning

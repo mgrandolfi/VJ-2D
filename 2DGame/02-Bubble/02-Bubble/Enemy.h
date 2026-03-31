@@ -6,7 +6,7 @@
 #include "TileMap.h"
 
 
-enum EnemyTypes { PIOLIN, LUCAS, SILVESTRE, TASMANIA };
+enum EnemyTypes { PIOLIN, LUCAS, GHOST, TASMANIA };
 
 
 class Enemy
@@ -33,7 +33,6 @@ public:
 private:
 	void patrolMovement(int deltaTime);
 	void chasingPlayer_Lucas(int deltaTime);
-	void chasingPlayer_Ghost(int deltaTime);
 	void chasingPlayer_Tasmania(int deltaTime);
 
 private:

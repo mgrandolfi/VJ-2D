@@ -75,12 +75,13 @@ private:
 	float measureBitmapTextWidth(const char *text, float pixel);
 	void drawGlyphRows(const uint8_t *rows, float x, float y, float ps,
 	                   float r, float g, float b);
+	void updateMusic();
 
 private:
 	bool bPlay;
 	bool keys[GLFW_KEY_LAST + 1];
 
-	GameState state;
+	GameState state, previousState;
 	int currentLevel;
 	bool godMode;
 

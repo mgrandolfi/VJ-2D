@@ -53,6 +53,13 @@ public:
 	bool isOnJump(const glm::ivec2 &pos, const glm::ivec2 &size) const;
 	bool isOnWarp(const glm::ivec2 &pos, const glm::ivec2 &size) const;
 
+	// Returns the tile ID of the TILE_ELEVATOR directly below the sprite (-1 if none)
+	int        getTileIdBelow(const glm::ivec2 &pos, const glm::ivec2 &size) const;
+	// Returns world-pixel top-left of the first cell with this tile ID (-1,-1 if none)
+	glm::ivec2 findTileId(int tileId) const;
+	// Returns the raw tile ID stored at map cell (tx, ty), or -1 if out of bounds
+	int        getTileIdAt(int tx, int ty) const;
+
 	void setTileType(int tile, TileType type);
 	void setTileTypeRange(int tileFrom, int tileTo, TileType type);
 

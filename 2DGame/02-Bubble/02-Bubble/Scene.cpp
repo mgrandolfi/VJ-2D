@@ -139,9 +139,10 @@ void Scene::loadLevel(int level)
 	}
 	activeEnemies = 0;
 
-	gameOver       = false;
-	levelComplete  = false;
-	enemiesFrozen  = false;
+	gameOver               = false;
+	levelComplete          = false;
+	playerEnteringElevator = false;
+	enemiesFrozen          = false;
 	freezeTimer    = 0.f;
 	respawnTimer   = 0.f;
 	keysCollected  = 0;
@@ -184,6 +185,7 @@ void Scene::initMap(int level)
 	tileJumps.clear();
 	tileWarps.clear();
 	tileElevators.clear();
+	elevatorPairs.clear();
 
 	if (level == 1)
 	{
@@ -192,7 +194,13 @@ void Scene::initMap(int level)
 		tileLadders   = {9, 34};                                        // plantas / escaleras
 		tileWarps     = {36, 61};                                       // suelo teletransporte
 		tileJumps     = {11};                                           // plataforma up
-		tileElevators = {64, 65};                                       // tunel ascensor
+		tileElevators = {64, 65};                                       // tile IDs to mark solid
+
+		// Elevator pairs: entry tile (col,row) → exit tile (col,row)
+		elevatorPairs = {
+			{ glm::ivec2(6, 11), glm::ivec2(7,  8) },
+			{ glm::ivec2(18,14), glm::ivec2(19,16) }
+		};
 	}
 	else if (level == 3)
 	{
@@ -312,7 +320,7 @@ void Scene::spawnEntities(int level)
 	case 3:
 		setSpawn(18, 16);
 		spawnEnemy(0, PIOLIN,    L3_PIOLIN_X,    L3_PIOLIN_Y);
-		spawnEnemy(1, SILVESTRE, L3_SILVESTRE_X, L3_SILVESTRE_Y);
+		spawnEnemy(1, GHOST, L3_SILVESTRE_X, L3_SILVESTRE_Y);
 		keysRequired = 3;
 		keys[0] = { glm::ivec2(5  * ts, 14 * ts), false };
 		keys[1] = { glm::ivec2(10 * ts, 8  * ts), false };
@@ -341,7 +349,7 @@ void Scene::spawnEntities(int level)
 
 	default: // level 5
 		setSpawn(18, 13);
-		spawnEnemy(0, SILVESTRE, L5_SILVESTRE_X, L5_SILVESTRE_Y);
+		spawnEnemy(0, GHOST, L5_SILVESTRE_X, L5_SILVESTRE_Y);
 		spawnEnemy(1, TASMANIA,  L5_TASMANIA_X,  L5_TASMANIA_Y);
 		spawnEnemy(2, LUCAS,     L5_LUCAS_X,     L5_LUCAS_Y);
 		keysRequired = 3;
@@ -397,6 +405,45 @@ void Scene::update(int deltaTime)
 	const glm::ivec2 playerSize = player->getSpriteSize();
 
 	const int ts = map->getTileSize();
+
+	// --- Elevator ---
+	if (playerEnteringElevator && !player->isEnteringElevator())
+	{
+		// ENTER animation done → teleport and play EXIT
+		player->startElevatorExit(elevatorExitPos);
+		playerEnteringElevator = false;
+	}
+	else if (!player->isInElevator())
+	{
+		// Tile directly below the player's center
+		glm::ivec2 belowTile(
+			(playerPos.x + playerSize.x / 2) / ts,
+			(playerPos.y + playerSize.y) / ts
+		);
+
+		for (const auto &ep : elevatorPairs)
+		{
+			if (belowTile == ep.entryTile && Game::instance().getKey(GLFW_KEY_UP))
+			{
+				// entry → exit (UP)
+				elevatorExitPos = glm::ivec2(ep.exitTile.x * ts,
+				                             ep.exitTile.y * ts - ts);
+				player->startElevatorEnter();
+				playerEnteringElevator = true;
+				break;
+			}
+			else if (belowTile == ep.exitTile && Game::instance().getKey(GLFW_KEY_DOWN))
+			{
+				// exit → entry (DOWN)
+				elevatorExitPos = glm::ivec2(ep.entryTile.x * ts,
+				                             ep.entryTile.y * ts - ts);
+				player->startElevatorEnter();
+				playerEnteringElevator = true;
+				break;
+			}
+		}
+	}
+
 	const glm::ivec2 enemySize(ts, ts);
 	const glm::ivec2 pickupSize(ts, ts);
 
