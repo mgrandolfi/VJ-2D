@@ -63,6 +63,7 @@ public:
 
 	bool isGameOver()      const { return gameOver; }
 	bool isLevelComplete() const { return levelComplete; }
+	bool isLevelBack()     const { return levelBack; }
 
 	void setGodMode(bool g);
 	void killAllEnemies();
@@ -150,6 +151,7 @@ private:
 	// Game state flags
 	bool           gameOver;
 	bool           levelComplete;
+	bool           levelBack;
 
 	// Elevator state
 	bool           playerEnteringElevator;

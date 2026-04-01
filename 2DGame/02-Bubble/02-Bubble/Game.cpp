@@ -471,9 +471,11 @@ bool Game::update(int deltaTime)
 			else if (scene.isLevelComplete())
 			{
 				if (currentLevel < 5)
-				loadLevel(currentLevel + 1);
+					loadLevel(currentLevel + 1);
 				else state = STATE_WIN;
 			}
+			else if (scene.isLevelBack() && currentLevel > 1)
+				loadLevel(currentLevel - 1);
 			break;
 		default:
 			break;

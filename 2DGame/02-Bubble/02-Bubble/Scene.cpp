@@ -56,6 +56,7 @@ namespace {
 
 #define INIT_PLAYER_X_TILES 17
 #define INIT_PLAYER_Y_TILES 17
+
 #define HUD_SPACING  28.f
 
 // Level 1
@@ -125,6 +126,7 @@ Scene::Scene()
 	secretEnterPending = false;
 	secretLootTaken    = true;
 	secretExitCooldown = 0;
+	levelBack          = false;
 	itemAtlasCols     = 10;
 	itemAtlasRows     = 10;
 	itemAtlasCellUv   = glm::vec2(0.1f, 0.1f);
@@ -289,6 +291,7 @@ void Scene::loadLevel(int level)
 
 	gameOver               = false;
 	levelComplete          = false;
+	levelBack              = false;
 	playerEnteringElevator = false;
 	playerWarpingOut       = false;
 	enemiesFrozen          = false;
@@ -341,31 +344,31 @@ void Scene::initMap(int level)
 	warpTiles.clear();
 
 	if (level == 1) {
-		tileBlocks    = {0, 3, 4, 7, 10, 13, 14, 15, 28, 37, 42, 62};
+		tileBlocks    = {0, 3, 4, 7, 10, 13, 14, 15, 25, 28, 35, 37, 42, 62};
 		tileCliffs    = {2, 8, 12, 17};
 		tileLadders   = {9, 34};
 		tileWarps     = {36, 61};
 		tileJumps     = {11};
 
 		warpTiles = { glm::ivec2(15, 18), glm::ivec2(17, 7) };
-
-		// Puertas nivel 1: (col, row), tipo, abierta
-		//   DOOR_ENTRY  → spawn del jugador, empieza abierta
-		//   DOOR_EXIT   → requiere todas las llaves, pasa al siguiente nivel
-		//   DOOR_SECRET → entra a la sala secreta
 		doors = {
 			{ glm::ivec2(INIT_PLAYER_X_TILES, INIT_PLAYER_Y_TILES + 1), DOOR_ENTRY,  true  },
 			{ glm::ivec2(14, 4),  DOOR_EXIT,   false },
 			{ glm::ivec2(6,  13), DOOR_SECRET, false },
 			{ glm::ivec2(6,  16), DOOR_SECRET, false },
 		};
-
 	}
 	else if (level == 2) {
 		tileBlocks  = {0, 3, 4, 5, 6, 7, 21, 24, 46, 48, 49};
 		tileLadders = {51, 30};
 		tileCliffs  = {42, 44};
-		tileElevators = {47, 8, 9};
+
+		doors = {
+			{ glm::ivec2(INIT_PLAYER_X_TILES, INIT_PLAYER_Y_TILES + 1), DOOR_ENTRY,  true  },
+			{ glm::ivec2(14, 4),  DOOR_EXIT,   false },
+			{ glm::ivec2(5, 6), DOOR_SECRET, false },
+			{ glm::ivec2(6,  16), DOOR_SECRET, false },
+		};
 	}
 	else if (level == 3) {
 		tileBlocks  = {0, 3, 6, 7, 8, 10, 13, 30, 31, 33, 35, 41, 42, 44, 45, 64, 70, 71, 72, 73};
@@ -373,15 +376,28 @@ void Scene::initMap(int level)
 		tileJumps   = {2};
 		tileWarps   = {69};
 		tileCliffs  = {4, 5, 11, 12, 14, 15, 46};
-		tileElevators = {66, 67, 68};
+
 		warpTiles = { glm::ivec2(14, 11), glm::ivec2(17, 13) };
+		doors = {
+			{ glm::ivec2(16, 19), DOOR_ENTRY,  true  },
+			{ glm::ivec2(2, 8),  DOOR_EXIT,   false },
+			{ glm::ivec2(13, 6), DOOR_SECRET, false },
+			{ glm::ivec2(2, 15), DOOR_SECRET, false },
+		};
 	}
 	else if (level == 4) {
 		tileBlocks = {2, 3, 21};
 		tileJumps  = {23};
 		tileWarps  = {20};
 		tileCliffs = {7, 8, 28};
-		warpTiles  = { glm::ivec2(15, 18), glm::ivec2(17, 7) };
+
+		warpTiles  = { glm::ivec2(8, 10), glm::ivec2(9, 19) };
+		doors = {
+			{ glm::ivec2(2, 19), DOOR_ENTRY,  true  },
+			{ glm::ivec2(2, 12),  DOOR_EXIT,  false },
+			{ glm::ivec2(13, 7), DOOR_SECRET, false },
+			{ glm::ivec2(15, 13), DOOR_SECRET, false },
+		};
 	}
 	else if (level == 5) {
 		tileBlocks  = {2, 3, 4, 6, 7, 8, 31, 32, 33, 34, 35, 62, 63, 91};
@@ -389,7 +405,14 @@ void Scene::initMap(int level)
 		tileJumps   = {64};
 		tileWarps   = {36, 61, 65};
 		tileCliffs  = {66, 67, 68, 69, 71, 92};
-		warpTiles   = { glm::ivec2(15, 18), glm::ivec2(17, 7) };
+
+		warpTiles   = { glm::ivec2(7, 11), glm::ivec2(13, 14) };
+		doors = {
+			{ glm::ivec2(18, 14), DOOR_ENTRY,  true  },
+			{ glm::ivec2(15, 6),  DOOR_EXIT,   false },
+			{ glm::ivec2(13, 19), DOOR_SECRET, false },
+			{ glm::ivec2(3, 11), DOOR_SECRET, false },
+		};
 	}
 	applyTileTypes();
 }
@@ -401,7 +424,6 @@ void Scene::applyTileTypes() {
 	for (int id : tileDoors)     map->setTileType(id, TILE_DOOR);
 	for (int id : tileJumps)     map->setTileType(id, TILE_JUMP);
 	for (int id : tileWarps)     map->setTileType(id, TILE_WARP);
-	for (int id : tileElevators) map->setTileType(id, TILE_ELEVATOR);
 }
 
 void Scene::recreateWorldPickupSprites(int ts) {
@@ -432,7 +454,7 @@ void Scene::recreateWorldPickupSprites(int ts) {
 	const int ac = itemAtlasCols;
 	const int ar = itemAtlasRows;
 	keyWorldSprite = Sprite::createSprite(glm::ivec2(keyWorldPixelSize, keyWorldPixelSize),
-	                                      cell, &itemTex, &texProgram);
+	                                    cell, &itemTex, &texProgram);
 	keyWorldSprite->setNumberAnimations(1);
 	keyWorldSprite->setAnimationSpeed(0, 1);
 	keyWorldSprite->addKeyframe(0, atlasUv1Based(3, ac, ar, cell));
@@ -670,8 +692,9 @@ void Scene::update(int deltaTime)
 						secretReturnPos    = playerPos;
 						secretEnterPending = true;
 						secretAnimTimer    = 400;
+					} else if (door.type == DOOR_ENTRY && levelIndex > 1) {
+						levelBack = true;
 					}
-					// DOOR_ENTRY: solo abre visualmente
 					break;
 				}
 			}
@@ -937,9 +960,14 @@ void Scene::beginEnterSecretRoom() {
 	if (secretMap) { delete secretMap; secretMap = NULL; }
 
 	string secretFile;
+	glm::ivec2 secretSpawn;
 	switch (levelIndex) {
-	case 1:  secretFile = "secrets/secret1.txt"; break;
-	default: secretFile = "secrets/secret1.txt"; break;
+	case 1:  secretFile = "secrets/secret1.txt"; secretSpawn = {8, 11}; break;
+	case 2:  secretFile = "secrets/secret2.txt"; secretSpawn = {5, 11}; break;
+	case 3:  secretFile = "secrets/secret3.txt"; secretSpawn = {5, 11}; break;
+	case 4:  secretFile = "secrets/secret4.txt"; secretSpawn = {5, 11}; break;
+	case 5:  secretFile = "secrets/secret5.txt"; secretSpawn = {5, 11}; break;
+	default: secretFile = "secrets/secret1.txt"; secretSpawn = {8, 11}; break;
 	}
 	secretMap = TileMap::createTileMap(secretFile, glm::vec2(SCREEN_X, SCREEN_Y), texProgram);
 
@@ -954,9 +982,8 @@ void Scene::beginEnterSecretRoom() {
 	map = secretMap;
 	player->setTileMap(map);
 
-	// Posicion inicial en sala secreta — ajustar segun el mapa
 	const int ts = map->getTileSize();
-	player->setPosition(glm::vec2(8 * ts, 11 * ts));
+	player->setPosition(glm::vec2(secretSpawn.x * ts, secretSpawn.y * ts));
 
 	secretEnterPending = false;
 	secretExitCooldown = 1000;
