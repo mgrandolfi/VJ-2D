@@ -56,7 +56,8 @@ namespace {
 
 #define INIT_PLAYER_X_TILES 17
 #define INIT_PLAYER_Y_TILES 17
-
+#define SECRET_DOOR_COL 8
+#define SECRET_DOOR_ROW 13
 #define HUD_SPACING  28.f
 
 // Level 1
@@ -700,11 +701,12 @@ void Scene::update(int deltaTime)
 			}
 		}
 	} else {
-		// Sala secreta: UP en fila <= 6 para salir (ajustar segun el mapa)
-		int playerTileY = (playerPos.y + playerSize.y) / ts;
-		if (secretExitCooldown <= 0 && playerTileY <= 6
-		    && Game::instance().getKey(GLFW_KEY_UP)) {
-			exitSecretRoom();
+		// Sala secreta: puerta de salida en (SECRET_DOOR_COL, SECRET_DOOR_ROW)
+		if (secretExitCooldown <= 0 && Game::instance().getKey(GLFW_KEY_UP)) {
+			int playerTileX = (playerPos.x + playerSize.x / 2) / ts;
+			int playerTileY = (playerPos.y + playerSize.y) / ts;
+			if (playerTileX == SECRET_DOOR_COL && playerTileY == SECRET_DOOR_ROW)
+				exitSecretRoom();
 		}
 	}
 
@@ -815,6 +817,14 @@ void Scene::render()
 			doorSprite->setPosition(glm::vec2(door.tilePos.x * ts, door.tilePos.y * ts));
 			doorSprite->render();
 		}
+	}
+
+	// Puerta de salida de la sala secreta
+	if (inSecretRoom && doorSprite) {
+		texProgram.setUniform4f("color", 1.f, 1.f, 1.f, 1.f);
+		doorSprite->changeAnimation(0);
+		doorSprite->setPosition(glm::vec2(SECRET_DOOR_COL * ts, SECRET_DOOR_ROW * ts));
+		doorSprite->render();
 	}
 
 	if (!inSecretRoom) {
