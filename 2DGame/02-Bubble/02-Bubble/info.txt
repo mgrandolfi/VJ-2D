@@ -16,8 +16,8 @@ FUNCIONALITATS IMPLEMENTADES
 - 3 enemics per nivell amb moviments diferenciats:
     - Piolin: patrulla horitzontal
     - Lucas: persecució horitzontal del jugador
-    - Ghost: persecució amb ús d'escales
-    - Tasmania: persecució agressiva, pot seguir el jugador a qualsevol lloc
+    - Ghost: patrulla horitzontal
+    - Tasmania: persecució agressiva, pot seguir el jugador a qualsevol lloc i es transforma
 - 3 vides amb sistema de respawn
 - Si Bugs Bunny mor, es retorna al menú principal
 - Si es guanya la partida, surt una pantalla amb el missatge "YOU WON!", amb un botó per
