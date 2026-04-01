@@ -9,8 +9,7 @@
 enum EnemyTypes { PIOLIN, LUCAS, GHOST, TASMANIA };
 
 
-class Enemy
-{
+class Enemy {
 
 public:
 	Enemy();
@@ -23,14 +22,23 @@ public:
 
 	void setTileMap(TileMap *tileMap);
 	void setPosition(const glm::vec2 &pos);
-	void setPatrolRange(float halfRangePixels);  // how far left/right from spawn
-	void setTarget(const glm::ivec2 &pos) { targetPos = pos; }
+	void setPatrolRange(float halfRangePixels);  //rango del movimiento de patrulla (para ghost y piolin)
+	void setTarget(const glm::ivec2 &pos) { 
+		targetPos = pos; 
+	}
 
-	glm::ivec2 getPosition() const { return posEnemy; }
-	bool       isAlive()     const { return alive; }
-	void       kill()              { alive = false; }
+	glm::ivec2 getPosition() const { 
+		return posEnemy; 
+	}
+	bool isAlive() const { 
+		return alive; 
+	}
+	void kill() { 
+		alive = false; 
+	}
 
 private:
+	//funciones de los diferentes comportamientos de los enemigos
 	void patrolMovement(int deltaTime);
 	void chasingPlayer_Lucas(int deltaTime);
 	void chasingPlayer_Tasmania(int deltaTime);
@@ -39,37 +47,33 @@ private:
 	glm::ivec2 tileMapDispl, posEnemy;
 	glm::ivec2 targetPos;
 
-	Texture    spritesheet;
-	Sprite    *sprite;
-	TileMap   *map;
+	Texture spritesheet;
+	Sprite *sprite;
+	TileMap *map;
 
 	EnemyTypes type;
-	bool       alive;
+	bool alive;
 
-	float      dir;         //  1 = right, -1 = left
-	float      speed;
-	float      patrolMin, patrolMax;
-	float      timeWait;
-	int        steps, maxSteps;
-	bool       isStopped;
+	float dir;         //  1 = right, -1 = left
+	float speed, patrolMin, patrolMax, timeWait;
+	int steps, maxSteps;
+	bool isStopped;
 
-	// Used by Silvestre for ladder climbing
-	int        spriteSize;
+	int spriteSize;
 
-	float      climbVy;
-	bool       onLadder;
-	float      posXfrac;     // sub-pixel x accumulator
-	float      tornadoYfrac; // sub-pixel y accumulator (Tasmania tornado)
+	float climbVy;
+	bool onLadder;
+	float posXfrac; //para acumular pixeles para el movimiento horizontal
+	float tornadoYfrac; //para acumular pixeles para el tornado
 
-	// Tasmania state machine
+	//estados del tasmania: si no detecta al jugador no hace nada, tornado para perseguir y persecucion normal
 	enum TasmaniaState { TAS_IDLE, TAS_TORNADO, TAS_WALK };
 	TasmaniaState tasState;
 
-	// Lucas chase jump
 	bool lucIsJumping;
 	int  lucJumpAngle;
 	int  lucStartY;
 };
 
 
-#endif // _ENEMY_INCLUDE
+#endif 

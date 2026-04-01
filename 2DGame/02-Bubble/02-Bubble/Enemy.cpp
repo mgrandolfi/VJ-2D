@@ -7,18 +7,17 @@
 #include "Game.h"
 
 #ifndef M_PI
-#define M_PI 3.14159265358979323846
 #endif
 
 #define ENEMY_FALL 4
 
 #define TAS_DETECT_TILES 12   
-#define TAS_STOP_TILES    5  
-#define TAS_WALK_SPEED   2.0f 
+#define TAS_STOP_TILES 5  
+#define TAS_WALK_SPEED 2.0f 
 
-#define LUC_DETECT_TILES  5  
-#define LUC_JUMP_TILES    5   
-#define LUC_JUMP_STEP     5   
+#define LUC_DETECT_TILES 5  
+#define LUC_JUMP_TILES 5   
+#define LUC_JUMP_STEP 5   
 
 
 enum EnemyAnims {
@@ -274,6 +273,7 @@ static void applyGravity(glm::ivec2 &pos, TileMap *map, int sz) {
 	const int x1 = (pos.x + sz - 1) / ts;
 	const int y  = (pos.y + sz - 1) / ts;
 	for (int x = x0; x <= x1; ++x) {
+		//Si hay una escalera justo debajo de los pies del enemigo, lo apoyamos encima para que no la atraviese
 		if (map->tileTypeAt(x * ts + ts / 2, y * ts + ts / 2) == TILE_LADDER) {
 			const int overlap = pos.y + sz - y * ts;
 			if (overlap >= 0 && overlap <= ENEMY_FALL) {
@@ -319,8 +319,7 @@ void Enemy::patrolMovement(int deltaTime) {
 		dir = -1.f;
 		sprite->changeAnimation(WALK_LEFT);
 	}
-	else if (dir < 0 && map->collisionMoveLeft(posEnemy, size, true))
-	{
+	else if (dir < 0 && map->collisionMoveLeft(posEnemy, size, true)) {
 		posEnemy.x -= dx;
 		posXfrac = 0.f;
 		patrolMin = (float)posEnemy.x;  // la pared pasa a ser el nuevo limite izquierdo
@@ -360,6 +359,7 @@ void Enemy::chasingPlayer_Lucas(int deltaTime) {
 
 	bool onJump = map->isOnJump(posEnemy, size);
 
+	// Si Lucas pisa una plataforma de salto, salta igual que el jugador
 	if (lucIsJumping) {
 		lucJumpAngle += LUC_JUMP_STEP;
 		if (lucJumpAngle >= 180) {
@@ -429,9 +429,7 @@ void Enemy::chasingPlayer_Lucas(int deltaTime) {
 		if (!blocked && map->isOnCliff(posEnemy, size))
 			posEnemy.y -= (int)speed;
 
-		//Si pasa por plataforma de salto
-		if (onJump && !lucIsJumping)
-		{
+		if (onJump && !lucIsJumping) {
 			lucIsJumping = true;
 			lucJumpAngle = 0;
 			lucStartY = posEnemy.y;
@@ -451,6 +449,7 @@ void Enemy::chasingPlayer_Tasmania(int deltaTime) {
 	const float dy   = (float)(targetPos.y - posEnemy.y);
 	const float dist = sqrtf(dx * dx + dy * dy);
 
+	//se comprueba si detecta al player, si no lo detecta esta quieto
 	if (dist > TAS_DETECT_TILES * ts) {
 		if (tasState != TAS_IDLE) {
 			tasState = TAS_IDLE;
@@ -459,6 +458,7 @@ void Enemy::chasingPlayer_Tasmania(int deltaTime) {
 		return;
 	}
 
+	// Si tasmania esta en la misma altura que el player, camina, no es tornado
 	float walkThreshold = (tasState == TAS_WALK) ? ts * 2.f : ts;
 	if (fabsf(dy) < walkThreshold) {
 		if (tasState != TAS_WALK) {

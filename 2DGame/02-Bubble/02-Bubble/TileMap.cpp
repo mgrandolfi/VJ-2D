@@ -7,10 +7,10 @@
 
 using namespace std;
 
-// Solid for movement (jump pads must be walkable, not only decorative)
+//para movimiento tipo solido
 static bool tileBlocksMovement(TileType t)
 {
-	return t == TILE_BLOCK || t == TILE_JUMP || t == TILE_ELEVATOR || t == TILE_WARP;
+	return t == TILE_BLOCK || t == TILE_JUMP || t == TILE_WARP;
 }
 
 
@@ -285,6 +285,7 @@ TileType TileMap::tileTypeAt(int worldX, int worldY) const
 	return tileTypeMap[tile];
 }
 
+//tiles de escaleras
 bool TileMap::isOnLadder(const glm::ivec2 &pos, const glm::ivec2 &size) const
 {
 	int cx = pos.x + size.x / 2;
@@ -298,6 +299,7 @@ bool TileMap::isOnLadder(const glm::ivec2 &pos, const glm::ivec2 &size) const
 	return false;
 }
 
+//para las cuestas
 bool TileMap::isOnCliff(const glm::ivec2 &pos, const glm::ivec2 &size) const
 {
 	int cx = pos.x + size.x / 2;
@@ -311,6 +313,7 @@ bool TileMap::isOnCliff(const glm::ivec2 &pos, const glm::ivec2 &size) const
 	return false;
 }
 
+//puertas
 bool TileMap::isOnDoor(const glm::ivec2 &pos, const glm::ivec2 &size) const
 {
 	int cx = pos.x + size.x / 2;
@@ -318,6 +321,7 @@ bool TileMap::isOnDoor(const glm::ivec2 &pos, const glm::ivec2 &size) const
 	return tileTypeAt(cx, cy) == TILE_DOOR;
 }
 
+//para saber si esta en una sala secreta
 bool TileMap::isOnSecret(const glm::ivec2 &pos, const glm::ivec2 &size) const
 {
 	int cx = pos.x + size.x / 2;
@@ -325,11 +329,11 @@ bool TileMap::isOnSecret(const glm::ivec2 &pos, const glm::ivec2 &size) const
 	return tileTypeAt(cx, cy) == TILE_SECRET;
 }
 
+//para tiles de salto UP
 bool TileMap::isOnJump(const glm::ivec2 &pos, const glm::ivec2 &size) const
 {
 	int x0 = pos.x / tileSize;
 	int x1 = (pos.x + size.x - 1) / tileSize;
-	// First row strictly below sprite bottom — the tile surface we stand on
 	int y = (pos.y + size.y) / tileSize;
 	if(y >= mapSize.y) return false;
 	for(int x = x0; x <= x1; ++x)
@@ -341,6 +345,7 @@ bool TileMap::isOnJump(const glm::ivec2 &pos, const glm::ivec2 &size) const
 	return false;
 }
 
+//tiles de teletransporte
 bool TileMap::isOnWarp(const glm::ivec2 &pos, const glm::ivec2 &size) const
 {
 	int cx = pos.x + size.x / 2;
@@ -348,27 +353,6 @@ bool TileMap::isOnWarp(const glm::ivec2 &pos, const glm::ivec2 &size) const
 	return tileTypeAt(cx, cy) == TILE_WARP;
 }
 
-// Returns the tile ID of the first TILE_ELEVATOR tile directly below the sprite,
-// or -1 if none found.
-int TileMap::getTileIdBelow(const glm::ivec2 &pos, const glm::ivec2 &size) const
-{
-	int x0 = pos.x / tileSize;
-	int x1 = (pos.x + size.x - 1) / tileSize;
-	int y  = (pos.y + size.y) / tileSize;  // row just below sprite bottom
-	if (y >= mapSize.y) return -1;
-	if (x0 < 0) x0 = 0;
-	if (x1 >= mapSize.x) x1 = mapSize.x - 1;
-	for (int x = x0; x <= x1; ++x)
-	{
-		int tile = map[y * mapSize.x + x];
-		if (tile >= 0 && tile < totalTilesMap && tileTypeMap[tile] == TILE_ELEVATOR)
-			return tile;
-	}
-	return -1;
-}
-
-// Returns the world-pixel top-left position of the first map cell with the given tile ID.
-// Returns (-1,-1) if not found.
 glm::ivec2 TileMap::findTileId(int tileId) const
 {
 	for (int j = 0; j < mapSize.y; ++j)

@@ -32,12 +32,6 @@ public:
 	void playDoorEnterAnim();
 	void playDoorExitAnim();
 
-	void startElevatorEnter();
-	void startElevatorExit(const glm::ivec2 &exitPos);
-	bool isEnteringElevator() const { return elevatorEntering; }
-	bool isExitingElevator()  const { return elevatorExiting;  }
-	bool isInElevator()       const { return elevatorEntering || elevatorExiting; }
-
 	void startWarpDisappear();
 	void startWarpAppear(const glm::ivec2 &destPos);
 	bool isWarpDisappearing() const { return warpDisappearing; }
@@ -48,13 +42,13 @@ public:
 
 private:
 	glm::ivec2  tileMapDispl, posPlayer;
-	int         spriteSize;      // world-unit size (= tileSize)
+	int         spriteSize;     
 
-	// Jump state (sine-arc approach)
+	// Jump state
 	bool        isJumping;
-	int         jumpAngle;       // 0 → 180 (degrees)
-	int         startY;          // Y position when jump began
-	int         landAnimTimer;     // ms left before leaving LAND_* (keyframes loop otherwise)
+	int         jumpAngle;       // 0 - 180 (degrees)
+	int         startY;          // Y position cuando empieza salto
+	int         landAnimTimer;     
 
 	// Physics flags
 	bool        onGround;
@@ -63,14 +57,9 @@ private:
 
 	// Status
 	bool        godMode;
-	int         bootTimer;       // ms remaining for speed boost
-	int         hurtTimer;       // ms of post-hit invincibility
+	int         bootTimer;       // ms que quedan de boost (0 = no boost)
+	int         hurtTimer;      
 	int         livesPlayer;
-
-	// Elevator state
-	bool        elevatorEntering;
-	bool        elevatorExiting;
-	float       elevatorTimer;
 
 	// Warp state
 	bool        warpDisappearing;
@@ -83,7 +72,7 @@ private:
 
 	// Graphics
 	Texture     spritesheet;
-	Texture     spritesheetFast;   // boots-active sprite
+	Texture     spritesheetFast;   
 	Sprite     *sprite;
 	TileMap    *map;
 };

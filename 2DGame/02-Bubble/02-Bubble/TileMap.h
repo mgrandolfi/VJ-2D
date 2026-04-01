@@ -15,9 +15,8 @@ enum TileType
 	TILE_DOOR,
 	TILE_JUMP,
 	TILE_WARP,
-	TILE_CLIFF,     // ramps / one-way slopes
-	TILE_ELEVATOR,  // vertical tunnel (up/down shaft)
-	TILE_SECRET     // secret door trigger (walk-through, Up to enter)
+	TILE_CLIFF,     //rampas o cuestas
+	TILE_SECRET     //trigger para puerta secreta
 };
 
 class TileMap
@@ -38,7 +37,6 @@ public:
 	int getMapWidth() const { return mapSize.x; }
 	int getMapHeight() const { return mapSize.y; }
 
-	// When blockLadders is true, TILE_LADDER blocks horizontal moves (ground enemies).
 	bool collisionMoveLeft(const glm::ivec2 &pos, const glm::ivec2 &size,
 	                       bool blockLadders = false) const;
 	bool collisionMoveRight(const glm::ivec2 &pos, const glm::ivec2 &size,
@@ -46,7 +44,7 @@ public:
 	bool collisionMoveDown(const glm::ivec2 &pos, const glm::ivec2 &size, int *posY) const;
 	bool collisionMoveUp(const glm::ivec2 &pos, const glm::ivec2 &size, int *posY) const;
 
-	// Tile type queries at world pixel positions
+	// Tile type queries
 	TileType tileTypeAt(int worldX, int worldY) const;
 	bool isOnLadder(const glm::ivec2 &pos, const glm::ivec2 &size) const;
 	bool isOnCliff(const glm::ivec2 &pos, const glm::ivec2 &size) const;
@@ -55,12 +53,8 @@ public:
 	bool isOnJump(const glm::ivec2 &pos, const glm::ivec2 &size) const;
 	bool isOnWarp(const glm::ivec2 &pos, const glm::ivec2 &size) const;
 
-	// Returns the tile ID of the TILE_ELEVATOR directly below the sprite (-1 if none)
-	int        getTileIdBelow(const glm::ivec2 &pos, const glm::ivec2 &size) const;
-	// Returns world-pixel top-left of the first cell with this tile ID (-1,-1 if none)
 	glm::ivec2 findTileId(int tileId) const;
-	// Returns the raw tile ID stored at map cell (tx, ty), or -1 if out of bounds
-	int        getTileIdAt(int tx, int ty) const;
+	int getTileIdAt(int tx, int ty) const;
 
 	void setTileType(int tile, TileType type);
 	void setTileTypeRange(int tileFrom, int tileTo, TileType type);

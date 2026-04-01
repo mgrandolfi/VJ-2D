@@ -18,12 +18,6 @@
 
 enum ItemType { ITEM_WEIGHT, ITEM_BOMB, ITEM_BOOTS, ITEM_CLOCK };
 
-struct ElevatorPair
-{
-	glm::ivec2 entryTile;  // map tile coordinates (col, row) of the entry
-	glm::ivec2 exitTile;   // map tile coordinates (col, row) of the exit
-};
-
 struct LevelItem
 {
 	ItemType type;
@@ -72,7 +66,6 @@ public:
 private:
 	void initMap(int level);
 	void applyTileTypes();
-	void applyElevatorPairs();
 	void spawnEntities(int level);
 	void recreateWorldPickupSprites(int tileSize);
 	void configureItemsAtlas();
@@ -80,10 +73,8 @@ private:
 	bool checkCollision(const glm::ivec2 &posA, const glm::ivec2 &posB,
 	                    const glm::ivec2 &sizeA, const glm::ivec2 &sizeB) const;
 
-	void markSecretDoorTiles(int level);
 	bool playerOnSecretDoor(const glm::ivec2 &playerPos, const glm::ivec2 &playerSize) const;
 	void beginEnterSecretRoom();
-	void finishEnterSecretRoom();
 	void exitSecretRoom();
 
 private:
@@ -94,9 +85,7 @@ private:
 	std::vector<int> tileDoors;
 	std::vector<int> tileJumps;
 	std::vector<int> tileWarps;
-	std::vector<int>          tileElevators;   // tile IDs to mark as TILE_ELEVATOR (still used for applyTileTypes)
-	std::vector<ElevatorPair> elevatorPairs;   // explicit entry/exit positions per level
-	std::vector<glm::ivec2>   warpTiles;       // (col, row) positions of the 2 warp floors per level
+	std::vector<glm::ivec2>   warpTiles; //para posicionar los tiles de warp
 
 	TileMap       *map;
 	Player        *player;
@@ -107,50 +96,48 @@ private:
 	float          currentTime;
 	glm::mat4      projection;
 
-	// Camera
+	// camara
 	float          camZoom;
-	float          camX, camY;    // top-left of viewport in world coords
+	float          camX, camY;    // top-left of viewport en coordenadas de mundo
 
 	// HUD assets (rendered in screen-space projection)
 	Texture        heartTex;
 	Sprite        *heartSprite;
 
-	// Item/key sprites — atlas images/items.png (row-major 1-based indices; default 32×32px cells on this project’s 320² sheet)
 	Texture        itemTex;
-	Sprite        *itemSprite;       // world pickups (quad = tileSize)
-	Sprite        *itemHudSprite;    // carried-item icon in HUD (fixed size)
-	Sprite        *keyWorldSprite;   // keys in the level (smaller than tile)
-	Sprite        *keyHudSprite;     // one key icon + numeric counter in HUD
-	Sprite        *godHudSprite;     // god-mode HUD icon (sprite #5)
+	Sprite        *itemSprite;      
+	Sprite        *itemHudSprite;    
+	Sprite        *keyWorldSprite;   
+	Sprite        *keyHudSprite;    
+	Sprite        *godHudSprite;     
 	Sprite        *godAuraSprites[3];
 	int            keyWorldPixelSize;
 	int            itemAtlasCols;
 	int            itemAtlasRows;
-	glm::vec2      itemAtlasCellUv;  // normalized (du, dv) per cell
+	glm::vec2      itemAtlasCellUv; 
 
-	// Doors (images/items.png row 2: col 0=closed, col 1=open)
+	// Doors 
 	std::vector<LevelDoor> doors;
 	Texture                doorTex;
 	Sprite                *doorSprite;
 
-	// Main level vs secret room
 	TileMap       *mainMap;
 	TileMap       *secretMap;
 	int            levelIndex;
 	bool           inSecretRoom;
 	glm::ivec2     secretReturnPos;
-	int            secretAnimTimer;   // ms: entering / exiting
+	int            secretAnimTimer;   
 	bool           secretEnterPending;
 	LevelItem      secretLoot;
 	bool           secretLootTaken;
-	bool           secretIsChest;      // true = chest (open animation, not pickable)
-	Sprite        *chestSprite;        // smaller chest sprite for final room
-	bool           chestOpening;       // chest open animation playing
-	float          chestOpenTimer;     // ms for animation duration
-	int            secretDoorIndex;    // which secret door was entered (0-based among DOOR_SECRET)
+	bool           secretIsChest;      
+	Sprite        *chestSprite;       
+	bool           chestOpening;      
+	float          chestOpenTimer;     
+	int            secretDoorIndex;    
 	int            secretExitCooldown;
 
-	// Spawn position (reset here on respawn)
+	// Spawn position
 	glm::ivec2     spawnPos;
 
 	// Game state flags
@@ -158,23 +145,19 @@ private:
 	bool           levelComplete;
 	bool           levelBack;
 
-	// Elevator state
-	bool           playerEnteringElevator;
-	glm::ivec2     elevatorExitPos;
-
 	// Warp state
 	bool           playerWarpingOut;
 	glm::ivec2     warpDestPos;
 	bool           enemiesFrozen;
 	float          freezeTimer;
-	float          respawnTimer;   // countdown after death before respawning
+	float          respawnTimer;   // countdown para respwan despues de morir
 
-	// Keys to collect
+	// Keys 
 	LevelKey       keys[MAX_KEYS];
 	int            keysRequired;
 	int            keysCollected;
 
-	// Items scattered in the level
+	// Items 
 	LevelItem      items[MAX_ITEMS];
 	int            itemCount;
 
@@ -182,10 +165,10 @@ private:
 	bool           hasItem;
 	ItemType       carriedItem;
 
-	// Pushable weights (not picked up — exist in world)
+	// Pesos
 	struct WorldWeight {
 		glm::ivec2 pos;
-		bool       active;   // still in world
+		bool       active;   
 		bool       falling;
 		float      fallSpeed;
 	};
@@ -193,16 +176,16 @@ private:
 	WorldWeight    weights[MAX_WEIGHTS];
 	int            weightCount;
 
-	// Placed bomb state
+	// Bomba
 	bool           bombActive;
 	glm::ivec2     bombPos;
-	float          bombTimer;       // countdown ms until explosion
-	bool           bombExploding;   // smoke animation playing
-	float          bombSmokeTimer;  // ms accumulated for smoke animation
-	Sprite        *bombLitSprite;   // lit bomb on ground (atlas block 8)
-	Sprite        *bombSmokeSprite; // smoke explosion (atlas blocks 11-18, 8 frames)
+	float          bombTimer;     //contador para explosion   
+	bool           bombExploding;   
+	float          bombSmokeTimer;  //contador para duracion de humo
+	Sprite        *bombLitSprite;   
+	Sprite        *bombSmokeSprite; 
 
-	// Explosion effect (reused by bomb and weight)
+	// Explosion efecto
 	struct Explosion {
 		bool active;
 		glm::ivec2 pos;

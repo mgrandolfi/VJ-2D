@@ -29,13 +29,13 @@ static Mix_Chunk* sfxBoots;
 static Mix_Chunk* sfxWarp;
 #endif
 
-// Button slots on menu.png (640x480) — inner dark panels between gold rails ~x214–424
+// Button slots de menu
 static const float MENU_BTN_X = 222.f;
 static const float MENU_BTN_W = 196.f;
 static const float MENU_BTN_H = 55.f;
 static const float MENU_BTN_Y[] = { 160.f, 265.f, 365.f };
 
-// Instructions — inner panel of bottom gold frame (below y≈436 bar, above y≈475)
+// Instrucciones
 static const float INSTR_BTN_X = 258.f;
 static const float INSTR_BTN_Y = 440.f;
 static const float INSTR_BTN_W = 126.f;
@@ -137,9 +137,9 @@ void Game::init()
 	godMode = false;
 	muted = false;
 	memset(keys, 0, sizeof(keys));
-	currentLevel   = 1;
-	state          = STATE_MENU;
-	menuSelection  = 0;
+	currentLevel = 1;
+	state = STATE_MENU;
+	menuSelection = 0;
 	pauseSelection = 0;
 	instrBackHover = false;
 	mouseX = 0;
@@ -178,14 +178,12 @@ void Game::init()
 	previousLevel = -1;
 }
 
-void Game::playSfx(GameSfx sfx)
-{
+void Game::playSfx(GameSfx sfx) {
 #ifdef USE_SDL
 	if (muted)
 		return;
 	Mix_Chunk *ch = nullptr;
-	switch (sfx)
-	{
+	switch (sfx) {
 	case GameSfx::Freeze:    ch = sfxFreeze;    break;
 	case GameSfx::Explosion: ch = sfxExplosion; break;
 	case GameSfx::GodMode:   ch = sfxGodMode;   break;
@@ -199,14 +197,13 @@ void Game::playSfx(GameSfx sfx)
 #endif
 }
 
-void Game::initUI()
-{
+void Game::initUI() {
 	menuTex.loadFromFile("images/ui/menu.png", TEXTURE_PIXEL_FORMAT_RGBA);
 	winTex.loadFromFile("images/ui/win.png", TEXTURE_PIXEL_FORMAT_RGBA);
 	instructionsTex.loadFromFile("images/ui/instructions.png", TEXTURE_PIXEL_FORMAT_RGBA);
 	creditsTex.loadFromFile("images/ui/credits.png", TEXTURE_PIXEL_FORMAT_RGBA);
 
-	muteOnTex.loadFromFile("images/ui/mute_on.png",   TEXTURE_PIXEL_FORMAT_RGBA);
+	muteOnTex.loadFromFile("images/ui/mute_on.png", TEXTURE_PIXEL_FORMAT_RGBA);
 	muteOffTex.loadFromFile("images/ui/mute_off.png", TEXTURE_PIXEL_FORMAT_RGBA);
 
 	btnPlayTex.loadFromFile("images/ui/btn_play.png", TEXTURE_PIXEL_FORMAT_RGBA);
@@ -226,12 +223,12 @@ void Game::initUI()
 	fShader.free();
 
 	float quadData[] = {
-		  0.f,   0.f, 0.f, 0.f,
+		0.f,   0.f, 0.f, 0.f,
 		640.f,   0.f, 1.f, 0.f,
 		640.f, 480.f, 1.f, 1.f,
-		  0.f,   0.f, 0.f, 0.f,
+		0.f,   0.f, 0.f, 0.f,
 		640.f, 480.f, 1.f, 1.f,
-		  0.f, 480.f, 0.f, 1.f
+		0.f, 480.f, 0.f, 1.f
 	};
 
 	glGenVertexArrays(1, &uiVao);
@@ -261,8 +258,7 @@ void Game::initUI()
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 }
 
-void Game::renderUI(Texture &tex)
-{
+void Game::renderUI(Texture &tex) {
 	glm::mat4 proj = glm::ortho(0.f, 640.f, 480.f, 0.f);
 	glm::mat4 mv   = glm::mat4(1.f);
 
@@ -288,8 +284,7 @@ void Game::renderUI(Texture &tex)
 void Game::renderUIAt(Texture &tex, float x, float y, float w, float h)
 {
 	glm::mat4 proj = glm::ortho(0.f, 640.f, 480.f, 0.f);
-	glm::mat4 mv = glm::translate(glm::mat4(1.f), glm::vec3(x, y, 0.f)) *
-	               glm::scale(glm::mat4(1.f), glm::vec3(w / 640.f, h / 480.f, 1.f));
+	glm::mat4 mv = glm::translate(glm::mat4(1.f), glm::vec3(x, y, 0.f)) * glm::scale(glm::mat4(1.f), glm::vec3(w / 640.f, h / 480.f, 1.f));
 
 	uiProgram.use();
 	uiProgram.setUniformMatrix4f("projection", proj);
@@ -310,12 +305,10 @@ void Game::renderUIAt(Texture &tex, float x, float y, float w, float h)
 	glBindVertexArray(0);
 }
 
-void Game::renderColorQuad(float x, float y, float w, float h,
-                           float r, float g, float b, float a)
+void Game::renderColorQuad(float x, float y, float w, float h, float r, float g, float b, float a)
 {
 	glm::mat4 proj = glm::ortho(0.f, 640.f, 480.f, 0.f);
-	glm::mat4 mv = glm::translate(glm::mat4(1.f), glm::vec3(x, y, 0.f)) *
-	               glm::scale(glm::mat4(1.f), glm::vec3(w / 640.f, h / 480.f, 1.f));
+	glm::mat4 mv = glm::translate(glm::mat4(1.f), glm::vec3(x, y, 0.f)) * glm::scale(glm::mat4(1.f), glm::vec3(w / 640.f, h / 480.f, 1.f));
 
 	uiProgram.use();
 	uiProgram.setUniformMatrix4f("projection", proj);
@@ -336,8 +329,7 @@ void Game::renderColorQuad(float x, float y, float w, float h,
 	glBindVertexArray(0);
 }
 
-void Game::renderTexturedRect(Texture &tex, float x, float y, float w, float h,
-                              float u0, float v0, float u1, float v1)
+void Game::renderTexturedRect(Texture &tex, float x, float y, float w, float h, float u0, float v0, float u1, float v1)
 {
 	float vd[] = {
 		x,     y,     u0, v0,
@@ -371,10 +363,10 @@ void Game::renderTexturedRect(Texture &tex, float x, float y, float w, float h,
 }
 
 void Game::renderSubrectFitted(Texture &tex, float x, float y, float boxW, float boxH,
-                               int texW, int texH,
-                               float px0, float py0, float px1, float py1,
-                               float stretchX,
-                               float stretchY)
+							int texW, int texH,
+							float px0, float py0, float px1, float py1,
+							float stretchX,
+							float stretchY)
 {
 	float cw = px1 - px0;
 	float ch = py1 - py0;
@@ -415,13 +407,11 @@ void Game::renderSubrectFitted(Texture &tex, float x, float y, float boxW, float
 	renderTexturedRect(tex, ox, oy, dw, dh, u0, v0, u1, v1);
 }
 
-void Game::drawGlyphRows(const uint8_t *rows, float x, float y, float ps,
-                        float r, float g, float b)
+void Game::drawGlyphRows(const uint8_t *rows, float x, float y, float ps, float r, float g, float b)
 {
 	if (!rows)
 		return;
-	for (int row = 0; row < 7; ++row)
-	{
+	for (int row = 0; row < 7; ++row) {
 		uint8_t bits = rows[row];
 		for (int col = 0; col < 5; ++col)
 		{
@@ -431,8 +421,7 @@ void Game::drawGlyphRows(const uint8_t *rows, float x, float y, float ps,
 	}
 }
 
-float Game::measureBitmapTextWidth(const char *text, float pixel)
-{
+float Game::measureBitmapTextWidth(const char *text, float pixel) {
 	float w = 0.f;
 	for (const char *t = text; *t; ++t)
 	{
@@ -444,8 +433,7 @@ float Game::measureBitmapTextWidth(const char *text, float pixel)
 	return w;
 }
 
-void Game::renderBitmapTextCenter(const char *text, float cx, float cy, float pixel,
-                                float r, float g, float b)
+void Game::renderBitmapTextCenter(const char *text, float cx, float cy, float pixel, float r, float g, float b)
 {
 	float w = measureBitmapTextWidth(text, pixel);
 	float x0 = cx - w * 0.5f;
@@ -464,8 +452,7 @@ void Game::renderBitmapTextCenter(const char *text, float cx, float cy, float pi
 	}
 }
 
-void Game::renderBitmapTextHud(const char *text, float x, float y, float pixel,
-                               float r, float g, float b)
+void Game::renderBitmapTextHud(const char *text, float x, float y, float pixel, float r, float g, float b)
 {
 	float y0 = y;
 	for (const char *t = text; *t; ++t)
@@ -481,8 +468,7 @@ void Game::renderBitmapTextHud(const char *text, float x, float y, float pixel,
 	}
 }
 
-void Game::renderBitmapTextHudOutlined(const char *text, float x, float y, float pixel,
-                                       float r, float g, float b)
+void Game::renderBitmapTextHudOutlined(const char *text, float x, float y, float pixel, float r, float g, float b)
 {
 	static const float o = 1.f;
 	static const int kDx[] = {-1, 1, 0, 0, -1, -1, 1, 1};
@@ -535,21 +521,14 @@ void Game::render()
 	{
 	case STATE_MENU:
 		renderUI(menuTex);
-		renderColorQuad(MENU_BTN_X, MENU_BTN_Y[menuSelection],
-		                MENU_BTN_W, MENU_BTN_H,
-		                1.f, 0.85f, 0.f, 0.15f);
-		renderSubrectFitted(btnPlayTex, MENU_BTN_X + 4.f, MENU_BTN_Y[0] + 4.f,
-		                    MENU_BTN_W - 8.f, MENU_BTN_H - 8.f,
-		                    506, 274,
-		                    BTN_PLAY_CROP[0], BTN_PLAY_CROP[1], BTN_PLAY_CROP[2], BTN_PLAY_CROP[3],
-		                    1.22f, 1.f);
+		renderColorQuad(MENU_BTN_X, MENU_BTN_Y[menuSelection],MENU_BTN_W, MENU_BTN_H,1.f, 0.85f, 0.f, 0.15f);
+		renderSubrectFitted(btnPlayTex, MENU_BTN_X + 4.f, MENU_BTN_Y[0] + 4.f,MENU_BTN_W - 8.f, MENU_BTN_H - 8.f,506, 274,
+		                    BTN_PLAY_CROP[0], BTN_PLAY_CROP[1], BTN_PLAY_CROP[2], BTN_PLAY_CROP[3], 1.22f, 1.f);
 		renderSubrectFitted(btnInstrTex, MENU_BTN_X + 4.f, MENU_BTN_Y[1] + 4.f,
-		                    MENU_BTN_W - 8.f, MENU_BTN_H - 8.f,
-		                    640, 476,
+		                    MENU_BTN_W - 8.f, MENU_BTN_H - 8.f, 640, 476,
 		                    BTN_INSTR_CROP[0], BTN_INSTR_CROP[1], BTN_INSTR_CROP[2], BTN_INSTR_CROP[3]);
 		renderSubrectFitted(btnCreditsTex, MENU_BTN_X + 4.f, MENU_BTN_Y[2] + 4.f,
-		                    MENU_BTN_W - 8.f, MENU_BTN_H - 8.f,
-		                    486, 263,
+		                    MENU_BTN_W - 8.f, MENU_BTN_H - 8.f,486, 263,
 		                    BTN_CRED_CROP[0], BTN_CRED_CROP[1], BTN_CRED_CROP[2], BTN_CRED_CROP[3]);
 		renderColorQuad(MENU_BTN_X - 2.f, MENU_BTN_Y[menuSelection] - 2.f,
 		                MENU_BTN_W + 4.f, 2.f, 1.f, 0.85f, 0.f, 1.f);
@@ -557,8 +536,7 @@ void Game::render()
 		                MENU_BTN_W + 4.f, 2.f, 1.f, 0.85f, 0.f, 1.f);
 		renderColorQuad(MENU_BTN_X - 2.f, MENU_BTN_Y[menuSelection],
 		                2.f, MENU_BTN_H, 1.f, 0.85f, 0.f, 1.f);
-		renderColorQuad(MENU_BTN_X + MENU_BTN_W, MENU_BTN_Y[menuSelection],
-		                2.f, MENU_BTN_H, 1.f, 0.85f, 0.f, 1.f);
+		renderColorQuad(MENU_BTN_X + MENU_BTN_W, MENU_BTN_Y[menuSelection],2.f, MENU_BTN_H, 1.f, 0.85f, 0.f, 1.f);
 		break;
 
 	case STATE_PLAYING:
@@ -569,20 +547,13 @@ void Game::render()
 		scene.render();
 		renderColorQuad(0.f, 0.f, 640.f, 480.f, 0.f, 0.f, 0.f, 0.55f);
 		renderBitmapTextCenter("PAUSED", 320.f, 88.f, 5.f, 1.f, 1.f, 1.f);
-		renderBitmapTextCenter("CONTINUE", 320.f, PAUSE_ROW_Y[0] + PAUSE_ROW_H * 0.5f, 4.f,
-		                    1.f, 1.f, 1.f);
-		renderBitmapTextCenter("RESTART", 320.f, PAUSE_ROW_Y[1] + PAUSE_ROW_H * 0.5f, 4.f,
-		                    1.f, 1.f, 1.f);
-		renderBitmapTextCenter("EXIT", 320.f, PAUSE_ROW_Y[2] + PAUSE_ROW_H * 0.5f, 4.f,
-		                    1.f, 1.f, 1.f);
-		renderColorQuad(PAUSE_ROW_X - 2.f, PAUSE_ROW_Y[pauseSelection] - 2.f,
-		                PAUSE_ROW_W + 4.f, 2.f, 1.f, 0.85f, 0.f, 1.f);
-		renderColorQuad(PAUSE_ROW_X - 2.f, PAUSE_ROW_Y[pauseSelection] + PAUSE_ROW_H,
-		                PAUSE_ROW_W + 4.f, 2.f, 1.f, 0.85f, 0.f, 1.f);
-		renderColorQuad(PAUSE_ROW_X - 2.f, PAUSE_ROW_Y[pauseSelection],
-		                2.f, PAUSE_ROW_H, 1.f, 0.85f, 0.f, 1.f);
-		renderColorQuad(PAUSE_ROW_X + PAUSE_ROW_W, PAUSE_ROW_Y[pauseSelection],
-		                2.f, PAUSE_ROW_H, 1.f, 0.85f, 0.f, 1.f);
+		renderBitmapTextCenter("CONTINUE", 320.f, PAUSE_ROW_Y[0] + PAUSE_ROW_H * 0.5f, 4.f, 1.f, 1.f, 1.f);
+		renderBitmapTextCenter("RESTART", 320.f, PAUSE_ROW_Y[1] + PAUSE_ROW_H * 0.5f, 4.f,1.f, 1.f, 1.f);
+		renderBitmapTextCenter("EXIT", 320.f, PAUSE_ROW_Y[2] + PAUSE_ROW_H * 0.5f, 4.f,1.f, 1.f, 1.f);
+		renderColorQuad(PAUSE_ROW_X - 2.f, PAUSE_ROW_Y[pauseSelection] - 2.f,PAUSE_ROW_W + 4.f, 2.f, 1.f, 0.85f, 0.f, 1.f);
+		renderColorQuad(PAUSE_ROW_X - 2.f, PAUSE_ROW_Y[pauseSelection] + PAUSE_ROW_H,PAUSE_ROW_W + 4.f, 2.f, 1.f, 0.85f, 0.f, 1.f);
+		renderColorQuad(PAUSE_ROW_X - 2.f, PAUSE_ROW_Y[pauseSelection],2.f, PAUSE_ROW_H, 1.f, 0.85f, 0.f, 1.f);
+		renderColorQuad(PAUSE_ROW_X + PAUSE_ROW_W, PAUSE_ROW_Y[pauseSelection],2.f, PAUSE_ROW_H, 1.f, 0.85f, 0.f, 1.f);
 		break;
 
 	case STATE_WIN:
@@ -618,7 +589,7 @@ void Game::render()
 		break;
 	}
 
-	// Mute button — always visible, bottom-right corner
+	//Boton mutear
 	renderTexturedRect(muted ? muteOffTex : muteOnTex,
 	                   MUTE_X, MUTE_Y, MUTE_SIZE, MUTE_SIZE,
 	                   0.f, 0.f, 1.f, 1.f);
@@ -757,7 +728,6 @@ void Game::mousePress(int button)
 {
 	if (button != 0) return;
 
-	// Mute button click — always active
 	if (mouseX >= int(MUTE_X) && mouseX <= int(MUTE_X + MUTE_SIZE) &&
 	    mouseY >= int(MUTE_Y) && mouseY <= int(MUTE_Y + MUTE_SIZE)) {
 		muted = !muted;
