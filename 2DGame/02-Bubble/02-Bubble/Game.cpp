@@ -19,6 +19,14 @@ Mix_Music* musicLevel5;
 Mix_Music* musicWin;
 Mix_Music* musicPause;
 Mix_Music* musicCredits;
+
+static Mix_Chunk* sfxFreeze;
+static Mix_Chunk* sfxExplosion;
+static Mix_Chunk* sfxGodMode;
+static Mix_Chunk* sfxItem;
+static Mix_Chunk* sfxKey;
+static Mix_Chunk* sfxBoots;
+static Mix_Chunk* sfxWarp;
 #endif
 
 // Button slots on menu.png (640x480) — inner dark panels between gold rails ~x214–424
@@ -155,10 +163,40 @@ void Game::init()
 	musicPause   = Mix_LoadMUS("sound/pause.mp3");
 	musicWin     = Mix_LoadMUS("sound/win.mp3");
 	musicCredits = Mix_LoadMUS("sound/credits.mp3");
+
+	Mix_AllocateChannels(16);
+	sfxFreeze    = Mix_LoadWAV("sound/freeze.wav");
+	sfxExplosion = Mix_LoadWAV("sound/explosion.wav");
+	sfxGodMode   = Mix_LoadWAV("sound/godmode.wav");
+	sfxItem      = Mix_LoadWAV("sound/item.wav");
+	sfxKey       = Mix_LoadWAV("sound/llave.wav");
+	sfxBoots     = Mix_LoadWAV("sound/velocidad.wav");
+	sfxWarp      = Mix_LoadWAV("sound/warpfloor.wav");
 #endif
 
 	previousState = (GameState)-1;
 	previousLevel = -1;
+}
+
+void Game::playSfx(GameSfx sfx)
+{
+#ifdef USE_SDL
+	if (muted)
+		return;
+	Mix_Chunk *ch = nullptr;
+	switch (sfx)
+	{
+	case GameSfx::Freeze:    ch = sfxFreeze;    break;
+	case GameSfx::Explosion: ch = sfxExplosion; break;
+	case GameSfx::GodMode:   ch = sfxGodMode;   break;
+	case GameSfx::ItemPickup: ch = sfxItem;     break;
+	case GameSfx::KeyPickup: ch = sfxKey;       break;
+	case GameSfx::Boots:     ch = sfxBoots;     break;
+	case GameSfx::Warp:      ch = sfxWarp;      break;
+	}
+	if (ch)
+		Mix_PlayChannel(-1, ch, 0);
+#endif
 }
 
 void Game::initUI()
@@ -617,6 +655,8 @@ void Game::keyPressed(int key)
 		{
 			godMode = !godMode;
 			scene.setGodMode(godMode);
+			if (godMode)
+				playSfx(GameSfx::GodMode);
 		}
 		else if (key == GLFW_KEY_K)
 			scene.collectAllKeys();

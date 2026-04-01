@@ -24,6 +24,17 @@ enum GameState
 	STATE_CREDITS
 };
 
+enum class GameSfx
+{
+	Freeze,
+	Explosion,
+	GodMode,
+	ItemPickup,
+	KeyPickup,
+	Boots,
+	Warp
+};
+
 
 // Game is a singleton (a class with a single instance) that represents our whole application
 
@@ -58,6 +69,7 @@ public:
 	bool isGodMode() const { return godMode; }
 	void changeState(GameState s);
 	void loadLevel(int n);
+	void playSfx(GameSfx sfx);
 
 	// HUD overlay (screen coords, 640x480 ortho) — used by Scene
 	void renderBitmapTextHud(const char *text, float x, float y, float pixel,

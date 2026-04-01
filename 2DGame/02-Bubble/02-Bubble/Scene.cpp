@@ -690,6 +690,7 @@ void Scene::update(int deltaTime)
 					);
 					player->startWarpDisappear();
 					playerWarpingOut = true;
+					Game::instance().playSfx(GameSfx::Warp);
 					break;
 				}
 			}
@@ -735,6 +736,7 @@ void Scene::update(int deltaTime)
 				secretLootTaken = true;
 				hasItem     = true;
 				carriedItem = secretLoot.type;
+				Game::instance().playSfx(GameSfx::ItemPickup);
 			}
 		}
 		// Sala secreta: UP en fila <= 6 para salir (ajustar segun el mapa)
@@ -776,6 +778,7 @@ void Scene::update(int deltaTime)
 				items[i].collected = true;
 				hasItem     = true;
 				carriedItem = items[i].type;
+				Game::instance().playSfx(GameSfx::ItemPickup);
 			}
 		}
 
@@ -784,6 +787,7 @@ void Scene::update(int deltaTime)
 			if (checkCollision(playerPos, keys[i].pos, playerSize, pickupSize)) {
 				keys[i].collected = true;
 				keysCollected++;
+				Game::instance().playSfx(GameSfx::KeyPickup);
 			}
 		}
 
@@ -793,9 +797,11 @@ void Scene::update(int deltaTime)
 			case ITEM_CLOCK:
 				enemiesFrozen = true;
 				freezeTimer   = 5000.f;
+				Game::instance().playSfx(GameSfx::Freeze);
 				break;
 			case ITEM_BOOTS:
 				player->applyBoots(5000);
+				Game::instance().playSfx(GameSfx::Boots);
 				break;
 			case ITEM_BOMB:
 				// Place lit bomb on ground at player position
@@ -817,6 +823,7 @@ void Scene::update(int deltaTime)
 			if (bombTimer <= 0.f) {
 				bombExploding  = true;
 				bombSmokeTimer = 0.f;
+				Game::instance().playSfx(GameSfx::Explosion);
 				// Kill enemies in blast radius (3 tiles)
 				for (int i = 0; i < activeEnemies; ++i) {
 					if (!enemies[i]->isAlive()) continue;
@@ -910,6 +917,7 @@ void Scene::update(int deltaTime)
 					glm::ivec2 eSize(ts, ts);
 					if (checkCollision(weights[w].pos, ePos, wSize, eSize)) {
 						enemies[e]->kill();
+						Game::instance().playSfx(GameSfx::Explosion);
 						for (int x = 0; x < MAX_EXPLOSIONS; ++x) {
 							if (!explosions[x].active) {
 								explosions[x].active = true;
