@@ -10,7 +10,14 @@ SOIL_DIR = $(shell cd ../../../libs/Simple\ OpenGL\ Image\ Library/src && pwd)
 INCLUDES = -I"$(SOIL_DIR)"
 
 # Libraries (system packages on Fedora: glew-devel glfw-devel mesa-libGL-devel)
-LIBS = -lGLEW -lglfw -lGL -lSDL2 -lSDL2_mixer
+LIBS = -lGLEW -lglfw -lGL
+
+# Auto-detect SDL2 and SDL2_mixer — sound is optional
+SDL2_OK := $(shell pkg-config --exists sdl2 sdl2_mixer 2>/dev/null && echo yes)
+ifeq ($(SDL2_OK),yes)
+  CXXFLAGS += -DUSE_SDL
+  LIBS     += -lSDL2 -lSDL2_mixer
+endif
 
 # C++ source files for 02-Bubble
 CPP_SRCS = \

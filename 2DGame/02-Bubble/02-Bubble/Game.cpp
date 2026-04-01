@@ -5,7 +5,9 @@
 #include <cstring>
 #include <cctype>
 #include "Game.h"
-#include <SDL2/SDL.h>      
+
+#ifdef USE_SDL
+#include <SDL2/SDL.h>
 #include <SDL2/SDL_mixer.h>
 
 Mix_Music* musicMenu;
@@ -17,6 +19,7 @@ Mix_Music* musicLevel5;
 Mix_Music* musicWin;
 Mix_Music* musicPause;
 Mix_Music* musicCredits;
+#endif
 
 // Button slots on menu.png (640x480) — inner dark panels between gold rails ~x214–424
 static const float MENU_BTN_X = 222.f;
@@ -139,6 +142,7 @@ void Game::init()
 	scene.initShaders();
 	initUI();
 
+#ifdef USE_SDL
 	SDL_Init(SDL_INIT_AUDIO);
 	Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 2048);
 
@@ -151,6 +155,7 @@ void Game::init()
 	musicPause   = Mix_LoadMUS("sound/pause.mp3");
 	musicWin     = Mix_LoadMUS("sound/win.mp3");
 	musicCredits = Mix_LoadMUS("sound/credits.mp3");
+#endif
 
 	previousState = (GameState)-1;
 	previousLevel = -1;
@@ -574,7 +579,9 @@ void Game::keyPressed(int key)
 
 	if (key == GLFW_KEY_M) {
 		muted = !muted;
+#ifdef USE_SDL
 		Mix_VolumeMusic(muted ? 0 : MIX_MAX_VOLUME);
+#endif
 		return;
 	}
 
@@ -700,7 +707,9 @@ void Game::mousePress(int button)
 	if (mouseX >= int(MUTE_X) && mouseX <= int(MUTE_X + MUTE_SIZE) &&
 	    mouseY >= int(MUTE_Y) && mouseY <= int(MUTE_Y + MUTE_SIZE)) {
 		muted = !muted;
+#ifdef USE_SDL
 		Mix_VolumeMusic(muted ? 0 : MIX_MAX_VOLUME);
+#endif
 		return;
 	}
 
@@ -763,6 +772,7 @@ bool Game::getKey(int key) const
 
 void Game::updateMusic()
 {
+#ifdef USE_SDL
 	if(state != previousState || currentLevel != previousLevel)
 	{
 		Mix_HaltMusic();
@@ -804,4 +814,5 @@ void Game::updateMusic()
 		previousState = state;
 		previousLevel = currentLevel;
 	}
+#endif
 }

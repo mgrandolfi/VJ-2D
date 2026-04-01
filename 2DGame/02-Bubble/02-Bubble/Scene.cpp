@@ -112,7 +112,9 @@ Scene::Scene()
 	keyWorldSprite = NULL;
 	keyHudSprite   = NULL;
 	godHudSprite   = NULL;
-	doorSprite     = NULL;
+	doorSprite      = NULL;
+	bombLitSprite   = NULL;
+	bombSmokeSprite = NULL;
 	for (int i = 0; i < 3; ++i)
 		godAuraSprites[i] = NULL;
 	for (int i = 0; i < MAX_ENEMIES; ++i)
@@ -128,6 +130,13 @@ Scene::Scene()
 	itemAtlasCols     = 10;
 	itemAtlasRows     = 10;
 	itemAtlasCellUv   = glm::vec2(0.1f, 0.1f);
+	bombActive        = false;
+	bombExploding     = false;
+	bombTimer         = 0.f;
+	bombSmokeTimer    = 0.f;
+	weightCount       = 0;
+	for (int i = 0; i < MAX_EXPLOSIONS; ++i)
+		explosions[i].active = false;
 }
 
 Scene::~Scene()
@@ -143,6 +152,8 @@ Scene::~Scene()
 	if (keyHudSprite)   delete keyHudSprite;
 	if (godHudSprite)   delete godHudSprite;
 	if (doorSprite)     delete doorSprite;
+	if (bombLitSprite)  delete bombLitSprite;
+	if (bombSmokeSprite) delete bombSmokeSprite;
 	for (int i = 0; i < 3; ++i)
 		if (godAuraSprites[i]) delete godAuraSprites[i];
 	for (int i = 0; i < MAX_ENEMIES; ++i)
@@ -297,6 +308,13 @@ void Scene::loadLevel(int level)
 	keysCollected          = 0;
 	itemCount              = 0;
 	hasItem                = false;
+	bombActive             = false;
+	bombExploding          = false;
+	bombTimer              = 0.f;
+	bombSmokeTimer         = 0.f;
+	weightCount            = 0;
+	for (int i = 0; i < MAX_EXPLOSIONS; ++i)
+		explosions[i].active = false;
 	currentTime            = 0.f;
 	levelIndex             = level;
 	inSecretRoom           = false;
@@ -439,12 +457,31 @@ void Scene::recreateWorldPickupSprites(int ts) {
 	keyWorldSprite->changeAnimation(0);
 
 	itemSprite = Sprite::createSprite(glm::ivec2(ts * 2, ts * 2), cell, &itemTex, &texProgram);
-	itemSprite->setNumberAnimations(4);
+	itemSprite->setNumberAnimations(5);  // 0-3 = items, 4 = chest
 	for (int i = 0; i < 4; ++i) {
 		itemSprite->setAnimationSpeed(i, 1);
 		itemSprite->addKeyframe(i, atlasUv1Based(itemAnimToAtlasNum(i), ac, ar, cell));
 	}
+	itemSprite->setAnimationSpeed(4, 1);
+	itemSprite->addKeyframe(4, atlasUv1Based(9, ac, ar, cell));  // chest = atlas block 9
 	itemSprite->changeAnimation(0);
+
+	// Bomb sprites
+	if (bombLitSprite)  { delete bombLitSprite;  bombLitSprite  = NULL; }
+	if (bombSmokeSprite){ delete bombSmokeSprite; bombSmokeSprite = NULL; }
+
+	bombLitSprite = Sprite::createSprite(glm::ivec2(ts * 2, ts * 2), cell, &itemTex, &texProgram);
+	bombLitSprite->setNumberAnimations(1);
+	bombLitSprite->setAnimationSpeed(0, 1);
+	bombLitSprite->addKeyframe(0, atlasUv1Based(7, ac, ar, cell));  // lit bomb = atlas block 7
+	bombLitSprite->changeAnimation(0);
+
+	bombSmokeSprite = Sprite::createSprite(glm::ivec2(ts * 2, ts * 2), cell, &itemTex, &texProgram);
+	bombSmokeSprite->setNumberAnimations(1);
+	bombSmokeSprite->setAnimationSpeed(0, 8);  // 8 fps for smoke
+	for (int i = 11; i <= 18; ++i)
+		bombSmokeSprite->addKeyframe(0, atlasUv1Based(i, ac, ar, cell));
+	bombSmokeSprite->changeAnimation(0);
 
 	// Rebuild door sprite at the correct tile size
 	if (doorSprite) { delete doorSprite; doorSprite = NULL; }
@@ -492,7 +529,7 @@ void Scene::spawnEntities(int level)
 		keys[1] = { keyPickupPos(ts, kz, 13, 10), false };
 		keys[2] = { keyPickupPos(ts, kz, 9,  13), false };
 		// Items on mid platforms and main floor for coverage
-		items[0] = { ITEM_WEIGHT, itemPickupPos(ts, 5,  9),  false };
+		items[0] = { ITEM_WEIGHT, itemPickupPos(ts, 14, 10), false };  // elevated platform
 		items[1] = { ITEM_BOMB,   itemPickupPos(ts, 8,  7),  false };
 		items[2] = { ITEM_BOOTS,  itemPickupPos(ts, 4,  13), false };
 		items[3] = { ITEM_CLOCK,  itemPickupPos(ts, 16, 15), false };
@@ -508,7 +545,7 @@ void Scene::spawnEntities(int level)
 		keys[0] = { keyPickupPos(ts, kz, 7,  4),  false };
 		keys[1] = { keyPickupPos(ts, kz, 9,  14), false };
 		keys[2] = { keyPickupPos(ts, kz, 16, 14), false };
-		items[0] = { ITEM_WEIGHT, itemPickupPos(ts, 2,  16), false };
+		items[0] = { ITEM_WEIGHT, itemPickupPos(ts, 9,  15), false };  // elevated platform
 		items[1] = { ITEM_BOMB,   itemPickupPos(ts, 15, 4),  false };
 		items[2] = { ITEM_BOOTS,  itemPickupPos(ts, 10, 16), false };
 		items[3] = { ITEM_CLOCK,  itemPickupPos(ts, 17, 16), false };
@@ -524,7 +561,7 @@ void Scene::spawnEntities(int level)
 		keys[0] = { keyPickupPos(ts, kz, 7,  8),  false };
 		keys[1] = { keyPickupPos(ts, kz, 14, 8),  false };
 		keys[2] = { keyPickupPos(ts, kz, 2,  19), false };
-		items[0] = { ITEM_WEIGHT, itemPickupPos(ts, 1,  15), false };
+		items[0] = { ITEM_WEIGHT, itemPickupPos(ts, 10, 13), false };  // elevated platform
 		items[1] = { ITEM_BOMB,   itemPickupPos(ts, 12, 15), false };
 		items[2] = { ITEM_BOOTS,  itemPickupPos(ts, 15, 19), false };
 		items[3] = { ITEM_CLOCK,  itemPickupPos(ts, 16, 8),  false };
@@ -541,7 +578,7 @@ void Scene::spawnEntities(int level)
 		keys[1] = { keyPickupPos(ts, kz, 5,  13), false };
 		keys[2] = { keyPickupPos(ts, kz, 17, 19), false };
 		// Items on bottom floor and mid platforms (row16)
-		items[0] = { ITEM_WEIGHT, itemPickupPos(ts, 3,  19), false };
+		items[0] = { ITEM_WEIGHT, itemPickupPos(ts, 18, 13), false };  // elevated platform
 		items[1] = { ITEM_BOMB,   itemPickupPos(ts, 14, 13), false };
 		items[2] = { ITEM_BOOTS,  itemPickupPos(ts, 11, 16), false };
 		items[3] = { ITEM_CLOCK,  itemPickupPos(ts, 2,  16), false };
@@ -559,12 +596,25 @@ void Scene::spawnEntities(int level)
 		keys[1] = { keyPickupPos(ts, kz, 4,  11), false };
 		keys[2] = { keyPickupPos(ts, kz, 9,  19), false };
 		// Items spread: bottom (weight/clock), mid-right platform (bomb), mid-left (boots)
-		items[0] = { ITEM_WEIGHT, itemPickupPos(ts, 3,  19), false };
+		items[0] = { ITEM_WEIGHT, itemPickupPos(ts, 15, 14), false };  // elevated platform
 		items[1] = { ITEM_BOMB,   itemPickupPos(ts, 16, 14), false };
 		items[2] = { ITEM_BOOTS,  itemPickupPos(ts, 6,  11), false };
 		items[3] = { ITEM_CLOCK,  itemPickupPos(ts, 13, 19), false };
 		itemCount = 4;
 		break;
+	}
+
+	// Extract ITEM_WEIGHT entries into the weights array (they are pushable, not pickable)
+	weightCount = 0;
+	for (int i = 0; i < itemCount; ++i) {
+		if (items[i].type == ITEM_WEIGHT && weightCount < MAX_WEIGHTS) {
+			weights[weightCount].pos       = items[i].pos;
+			weights[weightCount].active    = true;
+			weights[weightCount].falling   = false;
+			weights[weightCount].fallSpeed = 0.f;
+			weightCount++;
+			items[i].collected = true;  // mark as collected so it won't render/pickup as normal item
+		}
 	}
 }
 
@@ -677,6 +727,16 @@ void Scene::update(int deltaTime)
 			}
 		}
 	} else {
+		// Sala secreta: recoger loot
+		if (!secretLootTaken && !secretLoot.collected) {
+			const glm::ivec2 pickupSize(ts, ts);
+			if (checkCollision(playerPos, secretLoot.pos, playerSize, pickupSize)) {
+				secretLoot.collected = true;
+				secretLootTaken = true;
+				hasItem     = true;
+				carriedItem = secretLoot.type;
+			}
+		}
 		// Sala secreta: UP en fila <= 6 para salir (ajustar segun el mapa)
 		int playerTileY = (playerPos.y + playerSize.y) / ts;
 		if (secretExitCooldown <= 0 && playerTileY <= 6
@@ -711,6 +771,7 @@ void Scene::update(int deltaTime)
 
 		for (int i = 0; i < itemCount; ++i) {
 			if (items[i].collected) continue;
+			if (items[i].type == ITEM_WEIGHT) continue;  // weights are pushable, not pickable
 			if (checkCollision(playerPos, items[i].pos, playerSize, pickupSize)) {
 				items[i].collected = true;
 				hasItem     = true;
@@ -737,22 +798,141 @@ void Scene::update(int deltaTime)
 				player->applyBoots(5000);
 				break;
 			case ITEM_BOMB:
-				for (int i = 0; i < activeEnemies; ++i) {
-					if (!enemies[i]->isAlive()) continue;
-					glm::ivec2 diff = enemies[i]->getPosition() - playerPos;
-					if (abs(diff.x) < 3 * ts && abs(diff.y) < 3 * ts) enemies[i]->kill();
-				}
+				// Place lit bomb on ground at player position
+				bombActive    = true;
+				bombPos       = playerPos;
+				bombTimer     = 2000.f;  // 2 seconds fuse
+				bombExploding = false;
+				bombSmokeTimer = 0.f;
 				break;
 			case ITEM_WEIGHT:
-				for (int i = 0; i < activeEnemies; ++i) {
-					if (!enemies[i]->isAlive()) continue;
-					glm::ivec2 ePos = enemies[i]->getPosition();
-					int dx = abs(ePos.x - playerPos.x);
-					int dy = ePos.y - playerPos.y;
-					if (dx < ts * 3 && dy > 0 && dy < ts * 8) enemies[i]->kill();
-				}
+				// Weight is pushable, not usable from inventory
 				break;
 			}
+		}
+
+		// ---- Bomb timer & explosion ----
+		if (bombActive && !bombExploding) {
+			bombTimer -= deltaTime;
+			if (bombTimer <= 0.f) {
+				bombExploding  = true;
+				bombSmokeTimer = 0.f;
+				// Kill enemies in blast radius (3 tiles)
+				for (int i = 0; i < activeEnemies; ++i) {
+					if (!enemies[i]->isAlive()) continue;
+					glm::ivec2 diff = enemies[i]->getPosition() - bombPos;
+					if (abs(diff.x) < 3 * ts && abs(diff.y) < 3 * ts)
+						enemies[i]->kill();
+				}
+			}
+		}
+		if (bombExploding) {
+			bombSmokeTimer += deltaTime;
+			if (bombSmokeSprite) bombSmokeSprite->update(deltaTime);
+			if (bombSmokeTimer >= 1000.f) {  // 1s smoke animation
+				bombActive    = false;
+				bombExploding = false;
+			}
+		}
+
+		// ---- Pushable weights ----
+		for (int w = 0; w < weightCount; ++w) {
+			if (!weights[w].active) continue;
+
+			// Weight collision box = full sprite (2×2 tiles)
+			const glm::ivec2 wPos  = weights[w].pos;
+			const glm::ivec2 wSize(ts * 2, ts * 2);
+
+			if (!weights[w].falling) {
+				// Push: resolve overlap by moving weight away from player
+				if (checkCollision(playerPos, wPos, playerSize, wSize)) {
+					int pCx = playerPos.x + playerSize.x / 2;
+					int wCx = wPos.x + wSize.x / 2;
+
+					// Horizontal overlap amount
+					int overlapLeft  = (playerPos.x + playerSize.x) - wPos.x;
+					int overlapRight = (wPos.x + wSize.x) - playerPos.x;
+					// Vertical overlap amount
+					int overlapTop   = (playerPos.y + playerSize.y) - wPos.y;
+					int overlapBot   = (wPos.y + wSize.y) - playerPos.y;
+
+					// Only push horizontally if horizontal overlap is smaller (side collision)
+					int minOverlapH = std::min(overlapLeft, overlapRight);
+					int minOverlapV = std::min(overlapTop, overlapBot);
+
+					if (minOverlapH < minOverlapV) {
+						int pushDir = (pCx < wCx) ? 1 : -1;
+						int pushAmt = (pushDir > 0) ? overlapLeft : overlapRight;
+
+						glm::ivec2 newPos = weights[w].pos;
+						newPos.x += pushDir * pushAmt;
+
+						// Check wall at new position
+						int checkX = (pushDir > 0) ? (newPos.x + wSize.x) : (newPos.x - 1);
+						int checkY = newPos.y + wSize.y - 1;
+						TileType t = map->tileTypeAt(checkX, checkY);
+						if (t != TILE_BLOCK) {
+							weights[w].pos = newPos;
+						}
+					}
+				}
+
+				// Check if weight has ground beneath it
+				int belowY  = wPos.y + wSize.y;
+				int centerX = wPos.x + ts;  // center of sprite
+				TileType tBelow = map->tileTypeAt(centerX, belowY);
+				if (tBelow != TILE_BLOCK && tBelow != TILE_JUMP && tBelow != TILE_WARP) {
+					weights[w].falling   = true;
+					weights[w].fallSpeed = 0.f;
+				}
+			}
+
+			if (weights[w].falling) {
+				weights[w].fallSpeed += 0.15f * deltaTime;  // gravity
+				if (weights[w].fallSpeed > 4.f * ts) weights[w].fallSpeed = 4.f * ts;
+				weights[w].pos.y += int(weights[w].fallSpeed);
+
+				// Check ground collision
+				int belowY  = weights[w].pos.y + wSize.y;
+				int centerX = weights[w].pos.x + ts;
+				TileType tBelow = map->tileTypeAt(centerX, belowY);
+				if (tBelow == TILE_BLOCK || tBelow == TILE_JUMP || tBelow == TILE_WARP) {
+					int belowRow = belowY / ts;
+					weights[w].pos.y = (belowRow * ts) - wSize.y;  // snap sprite bottom to ground top
+					weights[w].falling   = false;
+					weights[w].fallSpeed = 0.f;
+				}
+
+				// Check if falling weight hits an enemy
+				for (int e = 0; e < activeEnemies; ++e) {
+					if (!enemies[e]->isAlive()) continue;
+					glm::ivec2 ePos = enemies[e]->getPosition();
+					glm::ivec2 eSize(ts, ts);
+					if (checkCollision(weights[w].pos, ePos, wSize, eSize)) {
+						enemies[e]->kill();
+						for (int x = 0; x < MAX_EXPLOSIONS; ++x) {
+							if (!explosions[x].active) {
+								explosions[x].active = true;
+								explosions[x].pos    = ePos;
+								explosions[x].timer  = 0.f;
+								break;
+							}
+						}
+					}
+				}
+
+				// Deactivate if fell off map
+				if (weights[w].pos.y > map->getMapHeight() * ts)
+					weights[w].active = false;
+			}
+		}
+
+		// ---- Explosion effects (from weight kills, etc.) ----
+		for (int i = 0; i < MAX_EXPLOSIONS; ++i) {
+			if (!explosions[i].active) continue;
+			explosions[i].timer += deltaTime;
+			if (explosions[i].timer >= 1000.f)
+				explosions[i].active = false;
 		}
 	}
 }
@@ -809,6 +989,46 @@ void Scene::render()
 			itemSprite->setPosition(glm::vec2(items[i].pos));
 			itemSprite->render();
 		}
+
+		// Render pushable weights
+		for (int w = 0; w < weightCount; ++w) {
+			if (!weights[w].active) continue;
+			texProgram.setUniform4f("color", 1.f, 1.f, 1.f, 1.f);
+			itemSprite->changeAnimation(int(ITEM_WEIGHT));
+			itemSprite->setPosition(glm::vec2(weights[w].pos));
+			itemSprite->render();
+		}
+	}
+
+	// Render secret room loot
+	if (inSecretRoom && !secretLootTaken && !secretLoot.collected && itemSprite) {
+		texProgram.setUniform4f("color", 1.f, 1.f, 1.f, 1.f);
+		if (levelIndex == 5)
+			itemSprite->changeAnimation(4);  // chest (atlas block 9)
+		else
+			itemSprite->changeAnimation(int(secretLoot.type));
+		itemSprite->setPosition(glm::vec2(secretLoot.pos));
+		itemSprite->render();
+	}
+
+	// Render active bomb (lit or smoke)
+	if (bombActive && !inSecretRoom) {
+		texProgram.setUniform4f("color", 1.f, 1.f, 1.f, 1.f);
+		if (bombExploding && bombSmokeSprite) {
+			bombSmokeSprite->setPosition(glm::vec2(bombPos));
+			bombSmokeSprite->render();
+		} else if (bombLitSprite) {
+			bombLitSprite->setPosition(glm::vec2(bombPos));
+			bombLitSprite->render();
+		}
+	}
+
+	// Render explosion effects (weight kills etc.)
+	for (int i = 0; i < MAX_EXPLOSIONS; ++i) {
+		if (!explosions[i].active || !bombSmokeSprite) continue;
+		texProgram.setUniform4f("color", 1.f, 1.f, 1.f, 1.f);
+		bombSmokeSprite->setPosition(glm::vec2(explosions[i].pos));
+		bombSmokeSprite->render();
 	}
 
 	player->render();
@@ -939,7 +1159,10 @@ void Scene::beginEnterSecretRoom() {
 	string secretFile;
 	switch (levelIndex) {
 	case 1:  secretFile = "secrets/secret1.txt"; break;
-	default: secretFile = "secrets/secret1.txt"; break;
+	case 2:  secretFile = "secrets/secret2.txt"; break;
+	case 3:  secretFile = "secrets/secret3.txt"; break;
+	case 4:  secretFile = "secrets/secret4.txt"; break;
+	default: secretFile = "secrets/secret5.txt"; break;
 	}
 	secretMap = TileMap::createTileMap(secretFile, glm::vec2(SCREEN_X, SCREEN_Y), texProgram);
 
@@ -954,9 +1177,19 @@ void Scene::beginEnterSecretRoom() {
 	map = secretMap;
 	player->setTileMap(map);
 
-	// Posicion inicial en sala secreta — ajustar segun el mapa
 	const int ts = map->getTileSize();
 	player->setPosition(glm::vec2(8 * ts, 11 * ts));
+
+	// Place loot in secret room (chest = atlas block 9 for level 5, items for others)
+	secretLootTaken = false;
+	secretLoot.collected = false;
+	switch (levelIndex) {
+	case 1:  secretLoot = { ITEM_BOMB,   itemPickupPos(ts, 10, 13), false }; break;
+	case 2:  secretLoot = { ITEM_BOOTS,  itemPickupPos(ts, 10, 13), false }; break;
+	case 3:  secretLoot = { ITEM_CLOCK,  itemPickupPos(ts, 10, 13), false }; break;
+	case 4:  secretLoot = { ITEM_BOMB,   itemPickupPos(ts, 10, 13), false }; break;
+	default: secretLoot = { ITEM_WEIGHT, itemPickupPos(ts, 10, 13), false }; break; // level 5: chest
+	}
 
 	secretEnterPending = false;
 	secretExitCooldown = 1000;

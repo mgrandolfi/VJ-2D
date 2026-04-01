@@ -174,6 +174,35 @@ private:
 	// Carried item
 	bool           hasItem;
 	ItemType       carriedItem;
+
+	// Pushable weights (not picked up — exist in world)
+	struct WorldWeight {
+		glm::ivec2 pos;
+		bool       active;   // still in world
+		bool       falling;
+		float      fallSpeed;
+	};
+	static const int MAX_WEIGHTS = 4;
+	WorldWeight    weights[MAX_WEIGHTS];
+	int            weightCount;
+
+	// Placed bomb state
+	bool           bombActive;
+	glm::ivec2     bombPos;
+	float          bombTimer;       // countdown ms until explosion
+	bool           bombExploding;   // smoke animation playing
+	float          bombSmokeTimer;  // ms accumulated for smoke animation
+	Sprite        *bombLitSprite;   // lit bomb on ground (atlas block 8)
+	Sprite        *bombSmokeSprite; // smoke explosion (atlas blocks 11-18, 8 frames)
+
+	// Explosion effect (reused by bomb and weight)
+	struct Explosion {
+		bool active;
+		glm::ivec2 pos;
+		float timer;
+	};
+	static const int MAX_EXPLOSIONS = 4;
+	Explosion      explosions[MAX_EXPLOSIONS];
 };
 
 
