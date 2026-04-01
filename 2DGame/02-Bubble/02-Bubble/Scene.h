@@ -37,6 +37,13 @@ struct LevelKey
 	bool collected;
 };
 
+enum DoorType { DOOR_ENTRY, DOOR_EXIT, DOOR_SECRET };
+
+struct LevelDoor {
+	glm::ivec2 tilePos;  // (col, row)
+	DoorType   type;
+	bool       open;
+};
 
 // Scene contains all the entities of our game.
 // It is responsible for updating and rendering them.
@@ -119,6 +126,11 @@ private:
 	int            itemAtlasCols;
 	int            itemAtlasRows;
 	glm::vec2      itemAtlasCellUv;  // normalized (du, dv) per cell
+
+	// Doors (images/items.png row 2: col 0=closed, col 1=open)
+	std::vector<LevelDoor> doors;
+	Texture                doorTex;
+	Sprite                *doorSprite;
 
 	// Main level vs secret room
 	TileMap       *mainMap;

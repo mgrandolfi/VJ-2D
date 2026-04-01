@@ -388,7 +388,6 @@ void Enemy::chasingPlayer_Lucas(int deltaTime)
 	int dx = targetPos.x - posEnemy.x;  // + = jugador a la derecha
 	int dy = targetPos.y - posEnemy.y;  // + = jugador abajo
 
-	bool onLadder = map->isOnLadder(posEnemy, size);
 	bool onJump   = map->isOnJump(posEnemy, size);
 
 	// --- Arco de salto activo ---
@@ -430,8 +429,7 @@ void Enemy::chasingPlayer_Lucas(int deltaTime)
 	}
 
 	// --- Gravedad ---
-	if (!onLadder)
-		applyGravity(posEnemy, map, spriteSize);
+	applyGravity(posEnemy, map, spriteSize);
 
 	// --- Jugador encima: usar escalera o trampolín ---
 	if (dy < -ts)
@@ -441,28 +439,6 @@ void Enemy::chasingPlayer_Lucas(int deltaTime)
 			lucIsJumping = true;
 			lucJumpAngle = 0;
 			lucStartY    = posEnemy.y;
-			return;
-		}
-		if (onLadder)
-		{
-			posEnemy.y -= (int)speed;
-			int dummy = posEnemy.y;
-			if (map->collisionMoveUp(posEnemy, size, &dummy))
-				posEnemy.y = dummy;
-			if (sprite->animation() != WALK_FRONT) sprite->changeAnimation(WALK_FRONT);
-			return;
-		}
-	}
-
-	// --- Jugador debajo: bajar por escalera ---
-	if (dy > ts && onLadder)
-	{
-		TileType below = map->tileTypeAt(posEnemy.x + half, posEnemy.y + spriteSize + 1);
-		if (below == TILE_LADDER)
-		{
-			posEnemy.y += (int)speed;
-			map->collisionMoveDown(posEnemy, size, &posEnemy.y);
-			if (sprite->animation() != WALK_FRONT) sprite->changeAnimation(WALK_FRONT);
 			return;
 		}
 	}
