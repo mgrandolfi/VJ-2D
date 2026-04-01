@@ -143,6 +143,11 @@ private:
 	bool           secretEnterPending;
 	LevelItem      secretLoot;
 	bool           secretLootTaken;
+	bool           secretIsChest;      // true = chest (open animation, not pickable)
+	Sprite        *chestSprite;        // smaller chest sprite for final room
+	bool           chestOpening;       // chest open animation playing
+	float          chestOpenTimer;     // ms for animation duration
+	int            secretDoorIndex;    // which secret door was entered (0-based among DOOR_SECRET)
 	int            secretExitCooldown;
 
 	// Spawn position (reset here on respawn)

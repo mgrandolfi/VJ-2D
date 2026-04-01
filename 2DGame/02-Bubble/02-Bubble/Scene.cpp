@@ -117,6 +117,7 @@ Scene::Scene()
 	doorSprite      = NULL;
 	bombLitSprite   = NULL;
 	bombSmokeSprite = NULL;
+	chestSprite     = NULL;
 	for (int i = 0; i < 3; ++i)
 		godAuraSprites[i] = NULL;
 	for (int i = 0; i < MAX_ENEMIES; ++i)
@@ -128,6 +129,10 @@ Scene::Scene()
 	secretAnimTimer    = 0;
 	secretEnterPending = false;
 	secretLootTaken    = true;
+	secretIsChest      = false;
+	chestOpening       = false;
+	chestOpenTimer     = 0.f;
+	secretDoorIndex    = 0;
 	secretExitCooldown = 0;
 	levelBack          = false;
 	itemAtlasCols     = 10;
@@ -157,6 +162,7 @@ Scene::~Scene()
 	if (doorSprite)     delete doorSprite;
 	if (bombLitSprite)  delete bombLitSprite;
 	if (bombSmokeSprite) delete bombSmokeSprite;
+	if (chestSprite)    delete chestSprite;
 	for (int i = 0; i < 3; ++i)
 		if (godAuraSprites[i]) delete godAuraSprites[i];
 	for (int i = 0; i < MAX_ENEMIES; ++i)
@@ -326,6 +332,10 @@ void Scene::loadLevel(int level)
 	secretAnimTimer        = 0;
 	secretEnterPending     = false;
 	secretLootTaken        = true;
+	secretIsChest          = false;
+	chestOpening           = false;
+	chestOpenTimer         = 0.f;
+	secretDoorIndex        = 0;
 	secretExitCooldown     = 0;
 
 	initMap(level);
@@ -488,6 +498,15 @@ void Scene::recreateWorldPickupSprites(int ts) {
 	itemSprite->setAnimationSpeed(4, 1);
 	itemSprite->addKeyframe(4, atlasUv1Based(9, ac, ar, cell));  // chest = atlas block 9
 	itemSprite->changeAnimation(0);
+
+	// Chest sprite (smaller than items — 1.5× tile)
+	if (chestSprite) { delete chestSprite; chestSprite = NULL; }
+	int chestSz = (ts * 3) / 2;  // 24px when ts=16
+	chestSprite = Sprite::createSprite(glm::ivec2(chestSz, chestSz), cell, &itemTex, &texProgram);
+	chestSprite->setNumberAnimations(1);
+	chestSprite->setAnimationSpeed(0, 1);
+	chestSprite->addKeyframe(0, atlasUv1Based(9, ac, ar, cell));
+	chestSprite->changeAnimation(0);
 
 	// Bomb sprites
 	if (bombLitSprite)  { delete bombLitSprite;  bombLitSprite  = NULL; }
@@ -739,11 +758,25 @@ void Scene::update(int deltaTime)
 						break;   // no tiene todas las llaves — puerta sigue cerrada
 					door.open = true;
 					if (door.type == DOOR_EXIT) {
-						levelComplete = true;
+						if (levelIndex == 5) {
+							// Level 5: enter final chest room instead of winning
+							secretReturnPos    = playerPos;
+							secretEnterPending = true;
+							secretAnimTimer    = 400;
+							secretDoorIndex    = -1;  // special: final room
+						} else {
+							levelComplete = true;
+						}
 					} else if (door.type == DOOR_SECRET) {
 						secretReturnPos    = playerPos;
 						secretEnterPending = true;
 						secretAnimTimer    = 400;
+						// Find which secret door index this is (0-based among DOOR_SECRET)
+						secretDoorIndex = 0;
+						for (const auto &d : doors) {
+							if (&d == &door) break;
+							if (d.type == DOOR_SECRET) secretDoorIndex++;
+						}
 					} else if (door.type == DOOR_ENTRY && levelIndex > 1) {
 						levelBack = true;
 					}
@@ -752,15 +785,36 @@ void Scene::update(int deltaTime)
 			}
 		}
 	} else {
-		// Sala secreta: recoger loot
-		if (!secretLootTaken && !secretLoot.collected) {
-			const glm::ivec2 pickupSize(ts, ts);
-			if (checkCollision(playerPos, secretLoot.pos, playerSize, pickupSize)) {
+		// Chest opening timer (must run before interaction to avoid same-frame completion)
+		if (chestOpening) {
+			chestOpenTimer -= deltaTime;
+			if (chestOpenTimer <= 0.f && !player->isOpeningChest()) {
+				chestOpening = false;
 				secretLoot.collected = true;
 				secretLootTaken = true;
-				hasItem     = true;
-				carriedItem = secretLoot.type;
-				Game::instance().playSfx(GameSfx::ItemPickup);
+				if (levelIndex == 5 && secretDoorIndex == -1)
+					levelComplete = true;
+			}
+		}
+
+		// Sala secreta: interact with loot
+		if (!secretLootTaken && !secretLoot.collected && !chestOpening) {
+			const glm::ivec2 pickupSize(ts * 2, ts * 2);  // match sprite render size
+			if (checkCollision(playerPos, secretLoot.pos, playerSize, pickupSize)) {
+				if (secretIsChest) {
+					// Chest: need to press UP to open
+					if (Game::instance().getKey(GLFW_KEY_UP)) {
+						chestOpening   = true;
+						chestOpenTimer = 1200.f;  // 1.2s for animation
+						player->startOpenChest();
+					}
+				} else {
+					// Normal item: pick up on contact
+					secretLoot.collected = true;
+					secretLootTaken = true;
+					hasItem     = true;
+					carriedItem = secretLoot.type;
+				}
 			}
 		}
 		// Sala secreta: puerta de salida en (SECRET_DOOR_COL, SECRET_DOOR_ROW)
@@ -1041,15 +1095,17 @@ void Scene::render()
 		}
 	}
 
-	// Render secret room loot
-	if (inSecretRoom && !secretLootTaken && !secretLoot.collected && itemSprite) {
+	// Render secret room loot (hide chest once opening animation starts)
+	if (inSecretRoom && !secretLootTaken && !secretLoot.collected && !chestOpening) {
 		texProgram.setUniform4f("color", 1.f, 1.f, 1.f, 1.f);
-		if (levelIndex == 5)
-			itemSprite->changeAnimation(4);  // chest (atlas block 9)
-		else
+		if (secretIsChest && chestSprite) {
+			chestSprite->setPosition(glm::vec2(secretLoot.pos));
+			chestSprite->render();
+		} else if (itemSprite) {
 			itemSprite->changeAnimation(int(secretLoot.type));
-		itemSprite->setPosition(glm::vec2(secretLoot.pos));
-		itemSprite->render();
+			itemSprite->setPosition(glm::vec2(secretLoot.pos));
+			itemSprite->render();
+		}
 	}
 
 	// Render active bomb (lit or smoke)
@@ -1223,15 +1279,27 @@ void Scene::beginEnterSecretRoom() {
 	const int ts = map->getTileSize();
 	player->setPosition(glm::vec2(secretSpawn.x * ts, secretSpawn.y * ts));
 
-	// Place loot in secret room (chest = atlas block 9 for level 5, items for others)
+	// Place loot in secret room
 	secretLootTaken = false;
 	secretLoot.collected = false;
+	secretIsChest   = false;
+	chestOpening    = false;
+	chestOpenTimer  = 0.f;
 	switch (levelIndex) {
 	case 1:  secretLoot = { ITEM_BOMB,   itemPickupPos(ts, 10, 13), false }; break;
 	case 2:  secretLoot = { ITEM_BOOTS,  itemPickupPos(ts, 10, 13), false }; break;
 	case 3:  secretLoot = { ITEM_CLOCK,  itemPickupPos(ts, 10, 13), false }; break;
 	case 4:  secretLoot = { ITEM_BOMB,   itemPickupPos(ts, 10, 13), false }; break;
-	default: secretLoot = { ITEM_WEIGHT, itemPickupPos(ts, 10, 13), false }; break; // level 5: chest
+	default: // level 5
+		if (secretDoorIndex == -1) {
+			// Final room (via exit door): chest on the right platform after stairs
+			secretLoot    = { ITEM_CLOCK, glm::ivec2(13 * ts + 6, 11 * ts + 6), false };
+			secretIsChest = true;
+		} else {
+			// Regular secret rooms: normal item
+			secretLoot = { ITEM_BOOTS, itemPickupPos(ts, 10, 13), false };
+		}
+		break;
 	}
 
 	secretEnterPending = false;

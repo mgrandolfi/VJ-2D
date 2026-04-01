@@ -49,6 +49,8 @@ Player::Player()
 	warpDisappearing = false;
 	warpAppearing    = false;
 	warpTimer        = 0.f;
+	openingChest     = false;
+	chestTimer       = 0.f;
 }
 
 Player::~Player()
@@ -74,13 +76,15 @@ void Player::init(const glm::ivec2 &tileMapPos, ShaderProgram &shaderProgram, in
 	elevatorEntering = false;
 	elevatorExiting  = false;
 	elevatorTimer    = 0.f;
+	openingChest     = false;
+	chestTimer       = 0.f;
 
 	spritesheet.loadFromFile("images/characters/bugs.png", TEXTURE_PIXEL_FORMAT_RGBA);
 	spritesheetFast.loadFromFile("images/characters/bugs_fast.png", TEXTURE_PIXEL_FORMAT_RGBA);
 	sprite = Sprite::createSprite(glm::ivec2(spriteSize, spriteSize),
 	                              glm::vec2(0.09f, 0.09f),
 	                              &spritesheet, &shaderProgram);
-	sprite->setNumberAnimations(23);
+	sprite->setNumberAnimations(24);
 
 	sprite->setAnimationSpeed(STAND_FRONT, 1);
 	sprite->addKeyframe(STAND_FRONT, glm::vec2(0.4f, 0.0f));
@@ -176,10 +180,10 @@ void Player::init(const glm::ivec2 &tileMapPos, ShaderProgram &shaderProgram, in
 	sprite->addKeyframe(OPEN_CHEST_LEFT, glm::vec2(0.3f, 0.2f));
 
 	sprite->setAnimationSpeed(OPEN_CHEST_RIGHT, 5);
-	sprite->addKeyframe(OPEN_CHEST_RIGHT, glm::vec2(0.7f, 0.2f));
-	sprite->addKeyframe(OPEN_CHEST_RIGHT, glm::vec2(0.6f, 0.2f));
-	sprite->addKeyframe(OPEN_CHEST_RIGHT, glm::vec2(0.5f, 0.2f));
 	sprite->addKeyframe(OPEN_CHEST_RIGHT, glm::vec2(0.4f, 0.2f));
+	sprite->addKeyframe(OPEN_CHEST_RIGHT, glm::vec2(0.5f, 0.2f));
+	sprite->addKeyframe(OPEN_CHEST_RIGHT, glm::vec2(0.6f, 0.2f));
+	sprite->addKeyframe(OPEN_CHEST_RIGHT, glm::vec2(0.7f, 0.2f));
 
 	sprite->changeAnimation(STAND_FRONT);
 	tileMapDispl = tileMapPos;
@@ -214,6 +218,15 @@ void Player::startWarpAppear(const glm::ivec2 &destPos)
 	                              float(tileMapDispl.y + posPlayer.y)));
 }
 
+void Player::startOpenChest()
+{
+	openingChest = true;
+	chestTimer   = 1200.f;  // animation duration
+	isJumping    = false;
+	facing       = 1;
+	sprite->changeAnimation(22);  // OPEN_CHEST_LEFT = 22
+}
+
 void Player::startElevatorExit(const glm::ivec2 &exitPos)
 {
 	posPlayer       = exitPos;
@@ -228,6 +241,17 @@ void Player::startElevatorExit(const glm::ivec2 &exitPos)
 void Player::update(int deltaTime)
 {
 	sprite->update(deltaTime);
+
+	// Chest open: block movement while animation plays
+	if (openingChest)
+	{
+		chestTimer -= deltaTime;
+		if (chestTimer <= 0.f)
+			openingChest = false;
+		sprite->setPosition(glm::vec2(float(tileMapDispl.x + posPlayer.x),
+		                              float(tileMapDispl.y + posPlayer.y)));
+		return;
+	}
 
 	// Elevator transition: only update animation, block all movement
 	if (elevatorEntering || elevatorExiting)

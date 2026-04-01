@@ -586,8 +586,20 @@ void Game::render()
 		break;
 
 	case STATE_WIN:
+	{
 		renderUI(winTex);
+		// Back button — larger and higher than instructions page
+		const float winBtnW = 240.f;
+		const float winBtnH = 48.f;
+		const float winBtnX = (640.f - winBtnW) * 0.5f;
+		const float winBtnY = 410.f;
+		renderSubrectFitted(btnBackTex, winBtnX + 2.f, winBtnY + 2.f,
+		                    winBtnW - 4.f, winBtnH - 4.f,
+		                    582, 217,
+		                    BTN_BACK_CROP[0], BTN_BACK_CROP[1], BTN_BACK_CROP[2], BTN_BACK_CROP[3],
+		                    1.18f, 1.18f);
 		break;
+	}
 
 	case STATE_INSTRUCTIONS:
 		renderUI(instructionsTex);
@@ -795,6 +807,19 @@ void Game::mousePress(int button)
 	{
 		if (mouseX >= INSTR_BTN_X && mouseX <= INSTR_BTN_X + INSTR_BTN_W &&
 		    mouseY >= INSTR_BTN_Y && mouseY <= INSTR_BTN_Y + INSTR_BTN_H)
+		{
+			state = STATE_MENU;
+			return;
+		}
+	}
+	else if (state == STATE_WIN)
+	{
+		const float winBtnW = 240.f;
+		const float winBtnX = (640.f - winBtnW) * 0.5f;
+		const float winBtnY = 410.f;
+		const float winBtnH = 48.f;
+		if (mouseX >= winBtnX && mouseX <= winBtnX + winBtnW &&
+		    mouseY >= winBtnY && mouseY <= winBtnY + winBtnH)
 		{
 			state = STATE_MENU;
 			return;

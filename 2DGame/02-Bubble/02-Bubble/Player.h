@@ -43,6 +43,9 @@ public:
 	bool isWarpDisappearing() const { return warpDisappearing; }
 	bool isWarping()          const { return warpDisappearing || warpAppearing; }
 
+	void startOpenChest();
+	bool isOpeningChest()     const { return openingChest; }
+
 private:
 	glm::ivec2  tileMapDispl, posPlayer;
 	int         spriteSize;      // world-unit size (= tileSize)
@@ -73,6 +76,10 @@ private:
 	bool        warpDisappearing;
 	bool        warpAppearing;
 	float       warpTimer;
+
+	// Chest open
+	bool        openingChest;
+	float       chestTimer;
 
 	// Graphics
 	Texture     spritesheet;
