@@ -569,13 +569,12 @@ void Scene::spawnEntities(int level)
 		// Keys spread across 3 heights: upper-left platform (row5), upper-right (row10), main floor (row13)
 		keys[0] = { keyPickupPos(ts, kz, 7,  5),  false };
 		keys[1] = { keyPickupPos(ts, kz, 13, 10), false };
-		keys[2] = { keyPickupPos(ts, kz, 9,  13), false };
+		keys[2] = { keyPickupPos(ts, kz, 2,  3), false };
 		// Items on mid platforms and main floor for coverage
-		items[0] = { ITEM_WEIGHT, itemPickupPos(ts, 14, 10), false };  // elevated platform
-		items[1] = { ITEM_BOMB,   itemPickupPos(ts, 8,  7),  false };
-		items[2] = { ITEM_BOOTS,  itemPickupPos(ts, 4,  13), false };
-		items[3] = { ITEM_CLOCK,  itemPickupPos(ts, 16, 15), false };
-		itemCount = 4;
+		items[0] = { ITEM_BOMB,   itemPickupPos(ts, 8,  7),  false };
+		items[1] = { ITEM_BOOTS,  itemPickupPos(ts, 4,  13), false };
+		items[2] = { ITEM_CLOCK,  itemPickupPos(ts, 16, 15), false };
+		itemCount = 3;
 		break;
 
 	case 2:
@@ -587,11 +586,10 @@ void Scene::spawnEntities(int level)
 		keys[0] = { keyPickupPos(ts, kz, 7,  4),  false };
 		keys[1] = { keyPickupPos(ts, kz, 9,  14), false };
 		keys[2] = { keyPickupPos(ts, kz, 16, 14), false };
-		items[0] = { ITEM_WEIGHT, itemPickupPos(ts, 9,  15), false };  // elevated platform
-		items[1] = { ITEM_BOMB,   itemPickupPos(ts, 15, 4),  false };
-		items[2] = { ITEM_BOOTS,  itemPickupPos(ts, 10, 16), false };
-		items[3] = { ITEM_CLOCK,  itemPickupPos(ts, 17, 16), false };
-		itemCount = 4;
+		items[0] = { ITEM_BOMB,   itemPickupPos(ts, 15, 4),  false };
+		items[1] = { ITEM_BOOTS,  itemPickupPos(ts, 10, 16), false };
+		items[2] = { ITEM_CLOCK,  itemPickupPos(ts, 17, 16), false };
+		itemCount = 3;
 		break;
 
 	case 3:
@@ -603,7 +601,7 @@ void Scene::spawnEntities(int level)
 		keys[0] = { keyPickupPos(ts, kz, 7,  8),  false };
 		keys[1] = { keyPickupPos(ts, kz, 14, 8),  false };
 		keys[2] = { keyPickupPos(ts, kz, 2,  19), false };
-		items[0] = { ITEM_WEIGHT, itemPickupPos(ts, 10, 13), false };  // elevated platform
+		items[0] = { ITEM_WEIGHT, itemPickupPos(ts, 11, 15), false };  // elevated platform
 		items[1] = { ITEM_BOMB,   itemPickupPos(ts, 12, 15), false };
 		items[2] = { ITEM_BOOTS,  itemPickupPos(ts, 15, 19), false };
 		items[3] = { ITEM_CLOCK,  itemPickupPos(ts, 16, 8),  false };
@@ -620,11 +618,10 @@ void Scene::spawnEntities(int level)
 		keys[1] = { keyPickupPos(ts, kz, 5,  13), false };
 		keys[2] = { keyPickupPos(ts, kz, 17, 19), false };
 		// Items on bottom floor and mid platforms (row16)
-		items[0] = { ITEM_WEIGHT, itemPickupPos(ts, 18, 13), false };  // elevated platform
-		items[1] = { ITEM_BOMB,   itemPickupPos(ts, 14, 13), false };
-		items[2] = { ITEM_BOOTS,  itemPickupPos(ts, 11, 16), false };
-		items[3] = { ITEM_CLOCK,  itemPickupPos(ts, 2,  16), false };
-		itemCount = 4;
+		items[0] = { ITEM_BOMB,   itemPickupPos(ts, 14, 13), false };
+		items[1] = { ITEM_BOOTS,  itemPickupPos(ts, 11, 16), false };
+		items[2] = { ITEM_WEIGHT,  itemPickupPos(ts, 2,  16), false };
+		itemCount = 3;
 		break;
 
 	default: // nivel 5
@@ -638,11 +635,10 @@ void Scene::spawnEntities(int level)
 		keys[1] = { keyPickupPos(ts, kz, 4,  11), false };
 		keys[2] = { keyPickupPos(ts, kz, 9,  19), false };
 		// Items spread: bottom (weight/clock), mid-right platform (bomb), mid-left (boots)
-		items[0] = { ITEM_WEIGHT, itemPickupPos(ts, 15, 14), false };  // elevated platform
-		items[1] = { ITEM_BOMB,   itemPickupPos(ts, 16, 14), false };
-		items[2] = { ITEM_BOOTS,  itemPickupPos(ts, 6,  11), false };
-		items[3] = { ITEM_CLOCK,  itemPickupPos(ts, 13, 19), false };
-		itemCount = 4;
+		items[0] = { ITEM_BOMB,   itemPickupPos(ts, 16, 14), false };
+		items[1] = { ITEM_BOOTS,  itemPickupPos(ts, 6,  11), false };
+		items[2] = { ITEM_CLOCK,  itemPickupPos(ts, 13, 19), false };
+		itemCount = 3;
 		break;
 	}
 
@@ -651,6 +647,7 @@ void Scene::spawnEntities(int level)
 	for (int i = 0; i < itemCount; ++i) {
 		if (items[i].type == ITEM_WEIGHT && weightCount < MAX_WEIGHTS) {
 			weights[weightCount].pos       = items[i].pos;
+			weights[weightCount].pos.y    -= ts;  // adjust for 2-tile height (itemPickupPos is for 1-tile items)
 			weights[weightCount].active    = true;
 			weights[weightCount].falling   = false;
 			weights[weightCount].fallSpeed = 0.f;
@@ -989,28 +986,28 @@ void Scene::update(int deltaTime)
 					weights[w].fallSpeed = 0.f;
 				}
 
-				// Check if falling weight hits an enemy
-				for (int e = 0; e < activeEnemies; ++e) {
-					if (!enemies[e]->isAlive()) continue;
-					glm::ivec2 ePos = enemies[e]->getPosition();
-					glm::ivec2 eSize(ts, ts);
-					if (checkCollision(weights[w].pos, ePos, wSize, eSize)) {
-						enemies[e]->kill();
-						Game::instance().playSfx(GameSfx::Explosion);
-						for (int x = 0; x < MAX_EXPLOSIONS; ++x) {
-							if (!explosions[x].active) {
-								explosions[x].active = true;
-								explosions[x].pos    = ePos;
-								explosions[x].timer  = 0.f;
-								break;
-							}
-						}
-					}
-				}
-
 				// Deactivate if fell off map
 				if (weights[w].pos.y > map->getMapHeight() * ts)
 					weights[w].active = false;
+			}
+
+			// Check if weight hits an enemy (pushed or falling)
+			for (int e = 0; e < activeEnemies; ++e) {
+				if (!enemies[e]->isAlive()) continue;
+				glm::ivec2 ePos = enemies[e]->getPosition();
+				glm::ivec2 eSize(ts, ts);
+				if (checkCollision(weights[w].pos, ePos, wSize, eSize)) {
+					enemies[e]->kill();
+					Game::instance().playSfx(GameSfx::Explosion);
+					for (int x = 0; x < MAX_EXPLOSIONS; ++x) {
+						if (!explosions[x].active) {
+							explosions[x].active = true;
+							explosions[x].pos    = ePos;
+							explosions[x].timer  = 0.f;
+							break;
+						}
+					}
+				}
 			}
 		}
 
