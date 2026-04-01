@@ -13,7 +13,7 @@ INCLUDES = -I"$(SOIL_DIR)"
 LIBS = -lGLEW -lglfw -lGL
 
 # Auto-detect SDL2 and SDL2_mixer — sound is optional
-SDL2_OK := $(shell pkg-config --exists sdl2 sdl2_mixer 2>/dev/null && echo yes)
+SDL2_OK := $(shell pkg-config --exists sdl2 SDL2_mixer 2>/dev/null && echo yes)
 ifeq ($(SDL2_OK),yes)
   CXXFLAGS += -DUSE_SDL
   LIBS     += -lSDL2 -lSDL2_mixer
