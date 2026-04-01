@@ -215,7 +215,7 @@ void Scene::initShaders()
 		                                         cell, &itemTex, &texProgram);
 		godAuraSprites[i]->setNumberAnimations(1);
 		godAuraSprites[i]->setAnimationSpeed(0, 1);
-		godAuraSprites[i]->addKeyframe(0, atlasUv1Based(7 + i, ac, ar, cell));
+		godAuraSprites[i]->addKeyframe(0, atlasUv1Based(8, ac, ar, cell));
 		godAuraSprites[i]->changeAnimation(0);
 	}
 }
@@ -763,18 +763,20 @@ void Scene::render()
 
 	if (player->isGodMode()) {
 		const glm::ivec2 pp = player->getPosition();
-		const int ps = player->getSpriteSize().x;
-		const float t = currentTime * 0.004f;
+		const glm::ivec2 ps = player->getSpriteSize();
+		const float cx = float(pp.x) + float(ps.x) * 0.5f;
+		const float cy = float(pp.y) + float(ps.y) * 0.5f;
+		const float orbitR = float(ps.x) * 0.9f;
+		const float t = currentTime * 0.003f;
+		const float ah = float(GOD_AURA_PIXEL_SIZE) * 0.5f;
+		texProgram.setUniform4f("color", 1.f, 1.f, 1.f, 1.f);
 		for (int i = 0; i < 3; ++i) {
 			float ang = t + float(i) * (2.f * float(M_PI) / 3.f);
-			const float ah = float(GOD_AURA_PIXEL_SIZE) * 0.5f;
-			glm::vec2 orb(pp.x + std::cos(ang) * 26.f + ps / 2.f - ah,
-			              pp.y + std::sin(ang) * 16.f + ps / 2.f - ah);
-			texProgram.setUniform4f("color", 1.f, 0.92f, 0.35f, 0.85f);
+			glm::vec2 orb(cx + std::cos(ang) * orbitR - ah,
+			              cy + std::sin(ang) * orbitR - ah);
 			godAuraSprites[i]->setPosition(orb);
 			godAuraSprites[i]->render();
 		}
-		texProgram.setUniform4f("color", 1.f, 1.f, 1.f, 1.f);
 	}
 	renderHUD();
 }
