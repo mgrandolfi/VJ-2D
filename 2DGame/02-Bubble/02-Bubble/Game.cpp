@@ -40,6 +40,10 @@ static const float BTN_INSTR_CROP[] = { 134.f, 217.f, 506.f, 258.f };     // 640
 static const float BTN_CRED_CROP[] = { 67.f, 101.f, 418.f, 160.f };       // 486x263
 static const float BTN_BACK_CROP[] = { 8.f, 8.f, 573.f, 208.f };         // 582x217
 
+static const float MUTE_SIZE = 36.f;
+static const float MUTE_X    = 640.f - MUTE_SIZE - 6.f;
+static const float MUTE_Y    = 6.f;
+
 
 namespace {
 
@@ -120,6 +124,7 @@ void Game::init()
 {
 	bPlay = true;
 	godMode = false;
+	muted = false;
 	memset(keys, 0, sizeof(keys));
 	currentLevel   = 1;
 	state          = STATE_MENU;
@@ -157,6 +162,9 @@ void Game::initUI()
 	winTex.loadFromFile("images/ui/win.png", TEXTURE_PIXEL_FORMAT_RGBA);
 	instructionsTex.loadFromFile("images/ui/instructions.png", TEXTURE_PIXEL_FORMAT_RGBA);
 	creditsTex.loadFromFile("images/ui/credits.png", TEXTURE_PIXEL_FORMAT_RGBA);
+
+	muteOnTex.loadFromFile("images/ui/mute_on.png",   TEXTURE_PIXEL_FORMAT_RGBA);
+	muteOffTex.loadFromFile("images/ui/mute_off.png", TEXTURE_PIXEL_FORMAT_RGBA);
 
 	btnPlayTex.loadFromFile("images/ui/btn_play.png", TEXTURE_PIXEL_FORMAT_RGBA);
 	btnInstrTex.loadFromFile("images/ui/btn_instructions.png", TEXTURE_PIXEL_FORMAT_RGBA);
@@ -459,7 +467,7 @@ bool Game::update(int deltaTime)
 		default:
 			break;
 	}
-	//updateMusic();
+	updateMusic();
 	return bPlay;
 }
 
@@ -541,12 +549,23 @@ void Game::render()
 		renderUI(creditsTex);
 		break;
 	}
+
+	// Mute button — always visible, bottom-right corner
+	renderTexturedRect(muted ? muteOffTex : muteOnTex,
+	                   MUTE_X, MUTE_Y, MUTE_SIZE, MUTE_SIZE,
+	                   0.f, 0.f, 1.f, 1.f);
 }
 
 void Game::keyPressed(int key)
 {
 	if (key < 0 || key > GLFW_KEY_LAST) return;
 	keys[key] = true;
+
+	if (key == GLFW_KEY_M) {
+		muted = !muted;
+		Mix_VolumeMusic(muted ? 0 : MIX_MAX_VOLUME);
+		return;
+	}
 
 	switch (state)
 	{
@@ -665,6 +684,14 @@ void Game::mouseMove(int x, int y)
 void Game::mousePress(int button)
 {
 	if (button != 0) return;
+
+	// Mute button click — always active
+	if (mouseX >= int(MUTE_X) && mouseX <= int(MUTE_X + MUTE_SIZE) &&
+	    mouseY >= int(MUTE_Y) && mouseY <= int(MUTE_Y + MUTE_SIZE)) {
+		muted = !muted;
+		Mix_VolumeMusic(muted ? 0 : MIX_MAX_VOLUME);
+		return;
+	}
 
 	if (state == STATE_MENU)
 	{

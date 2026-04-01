@@ -93,6 +93,9 @@ private:
 
 	Scene scene;
 
+	bool muted;
+	Texture muteOnTex, muteOffTex;
+
 	Texture menuTex, winTex, instructionsTex, creditsTex;
 	Texture btnPlayTex, btnInstrTex, btnCreditsTex, btnBackTex;
 
