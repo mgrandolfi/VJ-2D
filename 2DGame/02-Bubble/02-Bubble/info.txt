@@ -4,32 +4,37 @@
 
 INTEGRANTS DEL GRUP
 -------------------
-- Mateus Grandolfi
-- Carolina Rouj
+- Carolina Rodríguez Ujano
+- Mateus Grandolfi Albuquerque
 
 FUNCIONALITATS IMPLEMENTADES
 -----------------------------
-- Estructura de 4 pantalles: menú principal, joc, pausa i crèdits
+- Estructura de 4 pantalles: menú principal, joc, instruccions i crèdits
 - 5 nivells complets amb mecànica de claus i portes
-- Moviment del jugador: caminar esquerra/dreta, pujar/baixar escales, entrar per portes
-- 3 enemics per nivell amb IA diferenciada:
-    · Piolin: patrulla horitzontal
-    · Lucas: persecució horitzontal del jugador
-    · Silvestre: persecució amb ús d'escales
-    · Tasmania: persecució agressiva, pot seguir el jugador a qualsevol lloc
+- Moviment del jugador: caminar esquerra/dreta, pujar/baixar escales, entrar per portes,
+  fer servir jump floors i warp floors.
+- 3 enemics per nivell amb moviments diferenciats:
+    - Piolin: patrulla horitzontal
+    - Lucas: persecució horitzontal del jugador
+    - Ghost: persecució amb ús d'escales
+    - Tasmania: persecució agressiva, pot seguir el jugador a qualsevol lloc
 - 3 vides amb sistema de respawn
-- Pesos/roques empenyibles que maten enemics en contacte (caiguda o empenta)
-- 4 objectes col·leccionables:
-    · Pes (100t): empenyible per matar enemics
-    · Bomba: explota i elimina enemics propers
-    · Botes: augmenten la velocitat del jugador
-    · Rellotge: congela els enemics temporalment
-- Habitacions amb portes de connexió entre zones
-- Elements de nivell: terra de salt (nivell 1), escales amb plataformes (nivell 2)
+- Si Bugs Bunny mor, es retorna al menú principal
+- Si es guanya la partida, surt una pantalla amb el missatge "YOU WON!", amb un botó per
+  tornar al menú
+- Pes empenyible que mata enemics en contacte (caiguda o empenta)
+- 4 objectes utilitzables:
+    - Pes (100t): empenyible per matar enemics
+    - Bomba: explota i elimina enemics propers
+    - Botes: augmenten la velocitat del jugador
+    - Rellotge: congela els enemics temporalment
+- Avançar al següent nivell fent servir la porta de nivell un cop s'han agafat les 3 claus
+- Level items: jump floor i warp floor
 - Sala secreta amb recompenses
-- HUD complet: cors de vida, claus recollides, objecte actual, temporitzador
+- HUD complet: cors de vida, claus recollides, objecte actual (si n'hi ha algun), icona
+  de godmode quan s'activa
 - So i música: música de fons per nivell, efectes de so per accions
-- Tecles de depuració: G (mode déu), K (matar tots), 1-5 (selecció de nivell), P (pausa)
+- Tecles de depuració: G (god mode), K (agafar totes les claus), 1-5 (selecció de nivell)
 - Botó de silenciar àudio
 
 INSTRUCCIONS DEL JOC
@@ -40,15 +45,11 @@ Objectiu:
   per eliminar-los.
 
 Controls:
-  Fletxa esquerra / dreta  — Moure el personatge
-  Fletxa amunt / avall     — Pujar i baixar escales
-  Z                        — Utilitzar l'objecte recollit
-  P                        — Pausar el joc
-  ESC                      — Tornar al menú principal
-
-Consells:
-  - Empenya els pesos contra els enemics per eliminar-los
-  - Les bombes exploten després d'un breu temps i eliminen enemics propers
-  - Les botes et fan més ràpid temporalment
-  - El rellotge congela tots els enemics durant uns segons
-  - Cada nivell té 3 claus que cal recollir abans de poder sortir
+  Fletxa esquerra / dreta  - Moure el personatge
+  Fletxa amunt / avall     - Pujar i baixar escales
+  Fletxa amunt		   - Obre portes, utilitza warp floors, obre cofre final
+  Z                        - Utilitzar l'objecte recollit
+  P                        - Pausar el joc
+  ESC                      - Tornar al menú principal
+  M                        - Silenciar/activar àudio
+  G			   - Activa/desactiva godmode
