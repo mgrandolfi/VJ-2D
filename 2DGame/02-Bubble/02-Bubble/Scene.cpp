@@ -7,7 +7,6 @@
 #include <cstdio>
 #include <GLFW/glfw3.h>
 
-
 namespace {
 	glm::ivec2 keyPickupPos(int ts, int ksz, int tx, int surfaceRow)
 	{
@@ -54,46 +53,10 @@ namespace {
 #define GOD_AURA_PIXEL_SIZE  28   // 2× previous orbit sprites
 #define HUD_MARGIN    8.f
 
-#define INIT_PLAYER_X_TILES 17
-#define INIT_PLAYER_Y_TILES 17
 #define SECRET_DOOR_COL 8
 #define SECRET_DOOR_ROW 13
 #define HUD_SPACING  28.f
 
-// Level 1
-#define L1_PIOLIN_X      16
-#define L1_PIOLIN_Y       3
-#define L1_PIOLIN_RANGE   4
-#define L1_LUCAS_X       16
-#define L1_LUCAS_Y      3
-#define L1_TASMANIA_X     3
-#define L1_TASMANIA_Y    17
-
-// Level 2
-#define L2_LUCAS_X     3
-#define L2_LUCAS_Y    13
-#define L2_PIOLIN_X   10
-#define L2_PIOLIN_Y    7
-
-// Level 3
-#define L3_PIOLIN_X    4
-#define L3_PIOLIN_Y   16
-#define L3_SILVESTRE_X 10
-#define L3_SILVESTRE_Y 10
-
-// Level 4
-#define L4_LUCAS_X     3
-#define L4_LUCAS_Y    13
-#define L4_TASMANIA_X 10
-#define L4_TASMANIA_Y  7
-
-// Level 5
-#define L5_SILVESTRE_X  3
-#define L5_SILVESTRE_Y 13
-#define L5_TASMANIA_X  10
-#define L5_TASMANIA_Y   7
-#define L5_LUCAS_X     15
-#define L5_LUCAS_Y      2
 
 // UV coords for door sprites in images/items.png (320x320, 10x10 grid of 32x32 cells)
 // Row 2, col 0 = closed door;  row 2, col 1 = open door
@@ -201,7 +164,7 @@ void Scene::initShaders()
 	heartSprite->addKeyframe(0, glm::vec2(0.f, 0.f));
 	heartSprite->changeAnimation(0);
 
-	itemTex.loadFromFile("images/items.png", TEXTURE_PIXEL_FORMAT_RGBA);
+	itemTex.loadFromFile("images/sprites/items.png", TEXTURE_PIXEL_FORMAT_RGBA);
 	itemTex.setWrapS(GL_CLAMP_TO_EDGE);
 	itemTex.setWrapT(GL_CLAMP_TO_EDGE);
 	itemTex.setMinFilter(GL_NEAREST);
@@ -248,7 +211,7 @@ void Scene::initShaders()
 	// Door sprite: images/items.png (320x320, 10x10 grid)
 	// Row 2 col 0 = closed, row 2 col 1 = open
 	// Size is rebuilt per level in recreateWorldPickupSprites(); 16x16 as placeholder.
-	doorTex.loadFromFile("images/items.png", TEXTURE_PIXEL_FORMAT_RGBA);
+	doorTex.loadFromFile("images/sprites/items.png", TEXTURE_PIXEL_FORMAT_RGBA);
 	doorSprite = Sprite::createSprite(glm::ivec2(16, 16), DOOR_CELL_UV, &doorTex, &texProgram);
 	doorSprite->setNumberAnimations(2);
 	doorSprite->setAnimationSpeed(0, 1);
@@ -381,10 +344,10 @@ void Scene::initMap(int level)
 
 		warpTiles = { glm::ivec2(15, 18), glm::ivec2(17, 7) };
 		doors = {
-			{ glm::ivec2(INIT_PLAYER_X_TILES, INIT_PLAYER_Y_TILES + 1), DOOR_ENTRY,  true  },
+			{ glm::ivec2(17, 18), DOOR_ENTRY,  true  },
 			{ glm::ivec2(14, 4),  DOOR_EXIT,   false },
-			{ glm::ivec2(6,  13), DOOR_SECRET, false },
-			{ glm::ivec2(6,  16), DOOR_SECRET, false },
+			{ glm::ivec2(6, 13), DOOR_SECRET, false },
+			{ glm::ivec2(6, 16), DOOR_SECRET, false },
 		};
 	}
 	else if (level == 2) {
@@ -393,7 +356,7 @@ void Scene::initMap(int level)
 		tileCliffs  = {42, 44};
 
 		doors = {
-			{ glm::ivec2(INIT_PLAYER_X_TILES, INIT_PLAYER_Y_TILES + 1), DOOR_ENTRY,  true  },
+			{ glm::ivec2(17, 18), DOOR_ENTRY,  true  },
 			{ glm::ivec2(14, 4),  DOOR_EXIT,   false },
 			{ glm::ivec2(5, 6), DOOR_SECRET, false },
 			{ glm::ivec2(6,  16), DOOR_SECRET, false },
@@ -561,12 +524,11 @@ void Scene::spawnEntities(int level)
 
 	switch (level) {
 	case 1:
-		setSpawn(INIT_PLAYER_X_TILES, INIT_PLAYER_Y_TILES);
-		spawnEnemy(0, PIOLIN, L1_PIOLIN_X, L1_PIOLIN_Y);
-		enemies[0]->setPatrolRange(L1_PIOLIN_RANGE * ts);
-		spawnEnemy(1, LUCAS, L1_LUCAS_X, L1_LUCAS_Y);
+		setSpawn(17, 17); 
+		spawnEnemy(0, PIOLIN, 16, 3);
+		enemies[0]->setPatrolRange(4 * ts);
 		keysRequired = 3;
-		// Keys spread across 3 heights: upper-left platform (row5), upper-right (row10), main floor (row13)
+		//Colocacion de llaves
 		keys[0] = { keyPickupPos(ts, kz, 7,  5),  false };
 		keys[1] = { keyPickupPos(ts, kz, 13, 10), false };
 		keys[2] = { keyPickupPos(ts, kz, 2,  3), false };
@@ -578,11 +540,11 @@ void Scene::spawnEntities(int level)
 		break;
 
 	case 2:
-		setSpawn(18, 13);
-		spawnEnemy(0, LUCAS,  L2_LUCAS_X,  L2_LUCAS_Y);
-		spawnEnemy(1, PIOLIN, L2_PIOLIN_X, L2_PIOLIN_Y);
+		setSpawn(17, 17);
+		spawnEnemy(0, LUCAS,  3,  5);
+		spawnEnemy(1, PIOLIN, 10,  7);
 		keysRequired = 3;
-		// Keys on upper platform (row4) and mid platform (row14); items on lower platform (row16)
+
 		keys[0] = { keyPickupPos(ts, kz, 7,  4),  false };
 		keys[1] = { keyPickupPos(ts, kz, 9,  14), false };
 		keys[2] = { keyPickupPos(ts, kz, 16, 14), false };
@@ -593,11 +555,11 @@ void Scene::spawnEntities(int level)
 		break;
 
 	case 3:
-		setSpawn(18, 16);
-		spawnEnemy(0, PIOLIN, L3_PIOLIN_X,    L3_PIOLIN_Y);
-		spawnEnemy(1, GHOST,  L3_SILVESTRE_X, L3_SILVESTRE_Y);
+		setSpawn(16, 18);
+		spawnEnemy(0, PIOLIN, 4,  16);
+		spawnEnemy(1, GHOST,  16, 13);
+		spawnEnemy(2, LUCAS,  6, 7); 
 		keysRequired = 3;
-		// Keys on both upper platforms (row8) and bottom floor (row19); items on mid platform (row15)
 		keys[0] = { keyPickupPos(ts, kz, 7,  8),  false };
 		keys[1] = { keyPickupPos(ts, kz, 14, 8),  false };
 		keys[2] = { keyPickupPos(ts, kz, 2,  19), false };
@@ -609,11 +571,11 @@ void Scene::spawnEntities(int level)
 		break;
 
 	case 4:
-		setSpawn(18, 13);
-		spawnEnemy(0, LUCAS,    L4_LUCAS_X,    L4_LUCAS_Y);
-		spawnEnemy(1, TASMANIA, L4_TASMANIA_X, L4_TASMANIA_Y);
+		setSpawn(2, 18);
+		spawnEnemy(0, LUCAS,    3,  13);
+		spawnEnemy(1, TASMANIA, 10,  7);
 		keysRequired = 3;
-		// Keys on upper castle (row7), mid ladders (row13), and bottom floor (row19)
+
 		keys[0] = { keyPickupPos(ts, kz, 9,  7),  false };
 		keys[1] = { keyPickupPos(ts, kz, 5,  13), false };
 		keys[2] = { keyPickupPos(ts, kz, 17, 19), false };
@@ -626,11 +588,11 @@ void Scene::spawnEntities(int level)
 
 	default: // nivel 5
 		setSpawn(18, 13);
-		spawnEnemy(0, GHOST,    L5_SILVESTRE_X, L5_SILVESTRE_Y);
-		spawnEnemy(1, TASMANIA, L5_TASMANIA_X,  L5_TASMANIA_Y);
-		spawnEnemy(2, LUCAS,    L5_LUCAS_X,     L5_LUCAS_Y);
+		spawnEnemy(0, GHOST,    17,  7);
+		spawnEnemy(1, TASMANIA,  9, 12);
+		spawnEnemy(2, LUCAS,     4, 10);
 		keysRequired = 3;
-		// Keys on upper platform (row9 via ladder), mid-left (row11), and bottom floor (row19)
+
 		keys[0] = { keyPickupPos(ts, kz, 17, 9),  false };
 		keys[1] = { keyPickupPos(ts, kz, 4,  11), false };
 		keys[2] = { keyPickupPos(ts, kz, 9,  19), false };
@@ -657,10 +619,8 @@ void Scene::spawnEntities(int level)
 	}
 }
 
-bool Scene::checkCollision(const glm::ivec2 &posA, const glm::ivec2 &posB,
-                           const glm::ivec2 &sizeA, const glm::ivec2 &sizeB) const {
-	return (posA.x <= posB.x + sizeB.x && posA.x + sizeA.x >= posB.x &&
-	        posA.y <= posB.y + sizeB.y && posA.y + sizeA.y >= posB.y);
+bool Scene::checkCollision(const glm::ivec2 &posA, const glm::ivec2 &posB, const glm::ivec2 &sizeA, const glm::ivec2 &sizeB) const {
+	return (posA.x <= posB.x + sizeB.x && posA.x + sizeA.x >= posB.x && posA.y <= posB.y + sizeB.y && posA.y + sizeA.y >= posB.y);
 }
 
 void Scene::update(int deltaTime)
@@ -684,32 +644,7 @@ void Scene::update(int deltaTime)
 	const glm::ivec2 playerSize = player->getSpriteSize();
 	const int ts = map->getTileSize();
 
-	// ---- Ascensores ----
-	if (playerEnteringElevator && !player->isEnteringElevator()) {
-		player->startElevatorExit(elevatorExitPos);
-		playerEnteringElevator = false;
-	}
-	else if (!player->isInElevator()) {
-		glm::ivec2 belowTile(
-			(playerPos.x + playerSize.x / 2) / ts,
-			(playerPos.y + playerSize.y) / ts
-		);
-		for (const auto &ep : elevatorPairs) {
-			if (belowTile == ep.entryTile && Game::instance().getKey(GLFW_KEY_UP)) {
-				elevatorExitPos = glm::ivec2(ep.exitTile.x * ts, ep.exitTile.y * ts - ts);
-				player->startElevatorEnter();
-				playerEnteringElevator = true;
-				break;
-			} else if (belowTile == ep.exitTile && Game::instance().getKey(GLFW_KEY_DOWN)) {
-				elevatorExitPos = glm::ivec2(ep.entryTile.x * ts, ep.entryTile.y * ts - ts);
-				player->startElevatorEnter();
-				playerEnteringElevator = true;
-				break;
-			}
-		}
-	}
-
-	// ---- Teletransporte ----
+	//warp floors
 	if (playerWarpingOut && !player->isWarpDisappearing()) {
 		player->startWarpAppear(warpDestPos);
 		playerWarpingOut = false;
@@ -736,9 +671,8 @@ void Scene::update(int deltaTime)
 		}
 	}
 
-	// ---- Puertas ----
+	//gestion acceso a salas secretas y las puertas
 	if (secretExitCooldown > 0) secretExitCooldown -= deltaTime;
-
 	if (!inSecretRoom) {
 		if (secretEnterPending) {
 			secretAnimTimer -= deltaTime;

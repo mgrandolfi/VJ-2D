@@ -12,64 +12,58 @@
 
 #define ENEMY_FALL 4
 
-#define TAS_DETECT_TILES 12   // tiles away before Tasmania notices the player
-#define TAS_STOP_TILES    5   // tiles away to stop tornado and switch to walk
-#define TAS_WALK_SPEED   2.0f // px/frame when walking
+#define TAS_DETECT_TILES 12   
+#define TAS_STOP_TILES    5  
+#define TAS_WALK_SPEED   2.0f 
 
-#define LUC_DETECT_TILES  5   // detection radius in tiles
-#define LUC_JUMP_TILES    5   // jump height in tiles (matches player)
-#define LUC_JUMP_STEP     5   // angle step per frame
+#define LUC_DETECT_TILES  5  
+#define LUC_JUMP_TILES    5   
+#define LUC_JUMP_STEP     5   
 
 
-enum EnemyAnims
-{
+enum EnemyAnims {
 	WALK_RIGHT, WALK_LEFT, STAND_RIGHT, STAND_LEFT,
 	WALK_FRONT, WALK_BEHIND, LAND_RIGHT, LAND_LEFT,
 	STAND_FRONT, STAND_BEHIND, DISAPPEAR, TORNADO      
 };
 
-Enemy::Enemy()
-{
-	sprite        = NULL;
-	map           = NULL;
-	alive         = true;
-	spriteSize    = 32;
-	posXfrac      = 0.f;
+Enemy::Enemy() {
+	sprite = NULL;
+	map= NULL;
+	alive = true;
+	spriteSize = 32;
+	posXfrac = 0.f;
 	tornadoYfrac = 0.f;
-	tasState     = TAS_IDLE;
+	tasState = TAS_IDLE;
 	lucIsJumping = false;
 	lucJumpAngle = 0;
-	lucStartY    = 0;
+	lucStartY  = 0;
 }
 
-Enemy::~Enemy()
-{
+Enemy::~Enemy() {
 	if (sprite != NULL)
 		delete sprite;
 }
 
-void Enemy::init(const glm::ivec2 &tileMapPos, ShaderProgram &shaderProgram,
-                EnemyTypes enemyType, int tileSize)
-{
-	type       = enemyType;
+void Enemy::init(const glm::ivec2 &tileMapPos, ShaderProgram &shaderProgram, EnemyTypes enemyType, int tileSize) {
+	type = enemyType;
 	spriteSize = tileSize;
-	alive      = true;
-	dir        = 1.f;
-	isStopped  = false;
-	timeWait   = 0.f;
-	steps      = 0;
-	maxSteps   = 400;
-	climbVy       = 0.f;
-	onLadder      = false;
-	posXfrac      = 0.f;
-	tornadoYfrac  = 0.f;
-	tasState     = TAS_IDLE;
+	alive = true;
+	dir= 1.f;
+	isStopped = false;
+	timeWait= 0.f;
+	steps = 0;
+	maxSteps = 400;
+	climbVy = 0.f;
+	onLadder = false;
+	posXfrac = 0.f;
+	tornadoYfrac= 0.f;
+	tasState = TAS_IDLE;
 	lucIsJumping = false;
 	lucJumpAngle = 0;
-	lucStartY    = 0;
+	lucStartY = 0;
 
-	switch (type)
-	{
+	switch (type) {
 	case PIOLIN:    
 		speed = 0.7f; 
 		break;
@@ -77,21 +71,18 @@ void Enemy::init(const glm::ivec2 &tileMapPos, ShaderProgram &shaderProgram,
 		speed = 0.8f;
 		break;
 	case GHOST: 
-		speed = 1.0f; 
+		speed = 0.7f; 
 		break;
-	case TASMANIA:  
-		speed = 3.5f; 
+	case TASMANIA:
+		speed = 1.0f;
 		break;
 	}
 
 	spritesheet.loadFromFile("images/characters/enemies.png", TEXTURE_PIXEL_FORMAT_RGBA);
-	sprite = Sprite::createSprite(glm::ivec2(spriteSize, spriteSize),
-	                            glm::vec2(0.1f, 0.1f),
-	                            &spritesheet, &shaderProgram);
+	sprite = Sprite::createSprite(glm::ivec2(spriteSize, spriteSize), glm::vec2(0.1f, 0.1f), &spritesheet, &shaderProgram);
 	sprite->setNumberAnimations(12);
 
-	if (type == TASMANIA)
-	{
+	if (type == TASMANIA) {
 		sprite->setAnimationSpeed(WALK_RIGHT, 6);
 		sprite->addKeyframe(WALK_RIGHT, glm::vec2(0.7f, 0.0f));
 		sprite->addKeyframe(WALK_RIGHT, glm::vec2(0.8f, 0.0f));
@@ -123,16 +114,15 @@ void Enemy::init(const glm::ivec2 &tileMapPos, ShaderProgram &shaderProgram,
 		sprite->addKeyframe(STAND_BEHIND, glm::vec2(0.4f, 0.1f));
 
 		sprite->setAnimationSpeed(TORNADO, 8);
-		sprite->addKeyframe(TORNADO, glm::vec2(0.0f, 0.3f)); 
-		sprite->addKeyframe(TORNADO, glm::vec2(0.1f, 0.3f));
-		sprite->addKeyframe(TORNADO, glm::vec2(0.2f, 0.3f));
-		sprite->addKeyframe(TORNADO, glm::vec2(0.3f, 0.3f));
-		sprite->addKeyframe(TORNADO, glm::vec2(0.4f, 0.3f));
-		sprite->addKeyframe(TORNADO, glm::vec2(0.5f, 0.3f));
-		sprite->addKeyframe(TORNADO, glm::vec2(0.6f, 0.3f));
+		sprite->addKeyframe(TORNADO, glm::vec2(0.0f, 0.2f)); 
+		sprite->addKeyframe(TORNADO, glm::vec2(0.1f, 0.2f));
+		sprite->addKeyframe(TORNADO, glm::vec2(0.2f, 0.2f));
+		sprite->addKeyframe(TORNADO, glm::vec2(0.3f, 0.2f));
+		sprite->addKeyframe(TORNADO, glm::vec2(0.4f, 0.2f));
+		sprite->addKeyframe(TORNADO, glm::vec2(0.5f, 0.2f));
+		sprite->addKeyframe(TORNADO, glm::vec2(0.6f, 0.2f));
 	}
-	else if (type == LUCAS)
-	{
+	else if (type == LUCAS) {
 		sprite->setAnimationSpeed(WALK_RIGHT, 6);
 		sprite->addKeyframe(WALK_RIGHT, glm::vec2(0.0f, 0.3f));
 		sprite->addKeyframe(WALK_RIGHT, glm::vec2(0.1f, 0.3f));
@@ -177,8 +167,7 @@ void Enemy::init(const glm::ivec2 &tileMapPos, ShaderProgram &shaderProgram,
 		sprite->addKeyframe(DISAPPEAR, glm::vec2(0.6f, 0.5f));
 		sprite->addKeyframe(DISAPPEAR, glm::vec2(0.7f, 0.5f));
 	}
-	else if (type == GHOST)
-	{
+	else if (type == GHOST) {
 		sprite->setAnimationSpeed(WALK_RIGHT, 5);
 		sprite->addKeyframe(WALK_RIGHT, glm::vec2(0.0f, 0.7f));
 		sprite->addKeyframe(WALK_RIGHT, glm::vec2(0.1f, 0.7f));
@@ -203,8 +192,7 @@ void Enemy::init(const glm::ivec2 &tileMapPos, ShaderProgram &shaderProgram,
 		sprite->setAnimationSpeed(STAND_LEFT, 1);
 		sprite->addKeyframe(STAND_LEFT, glm::vec2(0.0f, 0.8f));
 	}
-	else if (type == PIOLIN)
-	{
+	else if (type == PIOLIN) {
 		sprite->setAnimationSpeed(WALK_RIGHT, 5);
 		sprite->addKeyframe(WALK_RIGHT, glm::vec2(0.0f, 0.6f));
 		sprite->addKeyframe(WALK_RIGHT, glm::vec2(0.1f, 0.6f));
@@ -224,23 +212,20 @@ void Enemy::init(const glm::ivec2 &tileMapPos, ShaderProgram &shaderProgram,
 	sprite->changeAnimation(WALK_RIGHT);
 
 	tileMapDispl = tileMapPos;
-	sprite->setPosition(glm::vec2(float(tileMapDispl.x + posEnemy.x),
-	                            float(tileMapDispl.y + posEnemy.y)));
+	sprite->setPosition(glm::vec2(float(tileMapDispl.x + posEnemy.x), float(tileMapDispl.y + posEnemy.y)));
 
 	patrolMin = posEnemy.x - 300.f;
 	if (patrolMin < 0.f) patrolMin = 0.f;
 	patrolMax = posEnemy.x + 300.f;
 }
 
-void Enemy::update(int deltaTime)
-{
+void Enemy::update(int deltaTime) {
 	if (!alive) return;
-
 	sprite->update(deltaTime);
-
-	switch (type)
-	{
+	switch (type) {
 	case PIOLIN:
+		patrolMovement(deltaTime);
+		break;
 	case GHOST:
 		patrolMovement(deltaTime);
 		break;
@@ -251,41 +236,34 @@ void Enemy::update(int deltaTime)
 		chasingPlayer_Tasmania(deltaTime);
 		break;
 	}
-
-	sprite->setPosition(glm::vec2(float(tileMapDispl.x + posEnemy.x),
-	                            float(tileMapDispl.y + posEnemy.y)));
+	sprite->setPosition(glm::vec2(float(tileMapDispl.x + posEnemy.x), float(tileMapDispl.y + posEnemy.y)));
 }
 
-void Enemy::render()
-{
+void Enemy::render() {
 	if (!alive) return;
 	sprite->render();
 }
 
-void Enemy::setTileMap(TileMap *tileMap)
-{
+void Enemy::setTileMap(TileMap *tileMap) {
 	map = tileMap;
 }
 
-void Enemy::setPosition(const glm::vec2 &pos)
-{
+void Enemy::setPosition(const glm::vec2 &pos) {
 	posEnemy = pos;
-	sprite->setPosition(glm::vec2(float(tileMapDispl.x + posEnemy.x),
-	                            float(tileMapDispl.y + posEnemy.y)));
+	sprite->setPosition(glm::vec2(float(tileMapDispl.x + posEnemy.x), float(tileMapDispl.y + posEnemy.y)));
 	patrolMin = posEnemy.x - 300.f;
 	if (patrolMin < 0.f) patrolMin = 0.f;
 	patrolMax = posEnemy.x + 300.f;
 }
 
-void Enemy::setPatrolRange(float halfRangePixels)
-{
+void Enemy::setPatrolRange(float halfRangePixels) {
 	patrolMin = posEnemy.x - halfRangePixels;
 	if (patrolMin < 0.f) patrolMin = 0.f;
 	patrolMax = posEnemy.x + halfRangePixels;
 }
 
-static void applyGravity(glm::ivec2 &pos, TileMap *map, int sz)
-{
+//aplicamos gravedad para que caigan siempre hacia el suelo
+static void applyGravity(glm::ivec2 &pos, TileMap *map, int sz) {
 	if (!map) return;
 	glm::ivec2 size(sz, sz);
 	pos.y += ENEMY_FALL;
@@ -295,13 +273,10 @@ static void applyGravity(glm::ivec2 &pos, TileMap *map, int sz)
 	const int x0 = pos.x / ts;
 	const int x1 = (pos.x + sz - 1) / ts;
 	const int y  = (pos.y + sz - 1) / ts;
-	for (int x = x0; x <= x1; ++x)
-	{
-		if (map->tileTypeAt(x * ts + ts / 2, y * ts + ts / 2) == TILE_LADDER)
-		{
+	for (int x = x0; x <= x1; ++x) {
+		if (map->tileTypeAt(x * ts + ts / 2, y * ts + ts / 2) == TILE_LADDER) {
 			const int overlap = pos.y + sz - y * ts;
-			if (overlap >= 0 && overlap <= ENEMY_FALL)
-			{
+			if (overlap >= 0 && overlap <= ENEMY_FALL) {
 				pos.y = y * ts - sz;
 				return;
 			}
@@ -309,8 +284,7 @@ static void applyGravity(glm::ivec2 &pos, TileMap *map, int sz)
 	}
 }
 
-void Enemy::patrolMovement(int deltaTime)
-{
+void Enemy::patrolMovement(int deltaTime) {
 	const glm::ivec2 size(spriteSize, spriteSize);
 	const int mapW = map->getMapWidth() * map->getTileSize();
 
@@ -336,12 +310,11 @@ void Enemy::patrolMovement(int deltaTime)
 		sprite->changeAnimation(WALK_LEFT);
 	}
 
-	//Si el enemigo se choca con alguna pared, dar la vuelta y actualizar el límite
-	if (dir > 0 && map->collisionMoveRight(posEnemy, size, true))
-	{
+	//Si el enemigo se choca con alguna pared, se da la vuelta y actualizamos el limite
+	if (dir > 0 && map->collisionMoveRight(posEnemy, size, true)) {
 		posEnemy.x -= dx;
 		posXfrac = 0.f;
-		patrolMax = (float)posEnemy.x;  // la pared pasa a ser el nuevo límite derecho
+		patrolMax = (float)posEnemy.x;  // la pared pasa a ser el nuevo limite derecho
 		posEnemy.x = (int)patrolMax - 1;
 		dir = -1.f;
 		sprite->changeAnimation(WALK_LEFT);
@@ -350,73 +323,62 @@ void Enemy::patrolMovement(int deltaTime)
 	{
 		posEnemy.x -= dx;
 		posXfrac = 0.f;
-		patrolMin = (float)posEnemy.x;  // la pared pasa a ser el nuevo límite izquierdo
+		patrolMin = (float)posEnemy.x;  // la pared pasa a ser el nuevo limite izquierdo
 		posEnemy.x = (int)patrolMin + 1;
 		dir = 1.f;
 		sprite->changeAnimation(WALK_RIGHT);
 	}
-	//Si llega a toda su ruta completa, cambiar de dirección y recorrerla de nuevo
+	//Si acaba su camino, volverlo a hacer en direccion contraria
 	if (posEnemy.x >= (int)patrolMax) {
-		posEnemy.x = (int)patrolMax - 1;  // snap inside so condition won't re-trigger
+		posEnemy.x = (int)patrolMax - 1;  
 		dir = -1.f; posXfrac = 0.f;
 		sprite->changeAnimation(WALK_LEFT);
 	}
 	else if (posEnemy.x <= (int)patrolMin) {
-		posEnemy.x = (int)patrolMin + 1;  // snap inside
+		posEnemy.x = (int)patrolMin + 1;  
 		dir =  1.f; posXfrac = 0.f;
 		sprite->changeAnimation(WALK_RIGHT);
 	}
 }
 
-void Enemy::chasingPlayer_Lucas(int deltaTime)
-{
-	const int ts   = map->getTileSize();
+//el pato lucas persigue al bugs cuando lo detecta en un ratio de 5 tiles pero no puede escalar
+void Enemy::chasingPlayer_Lucas(int deltaTime) {
+	const int ts = map->getTileSize();
 	const int half = spriteSize / 2;
 	const glm::ivec2 size(spriteSize, spriteSize);
 
-	// Distancia al jugador en tiles (Chebyshev)
 	int distX = abs((posEnemy.x + half) - (targetPos.x + half)) / ts;
 	int distY = abs((posEnemy.y + half) - (targetPos.y + half)) / ts;
 
-	if (std::max(distX, distY) > LUC_DETECT_TILES)
-	{
+	if (std::max(distX, distY) > LUC_DETECT_TILES) {
 		patrolMovement(deltaTime);
 		return;
 	}
 
-	// --- Chase mode ---
-	int dx = targetPos.x - posEnemy.x;  // + = jugador a la derecha
-	int dy = targetPos.y - posEnemy.y;  // + = jugador abajo
+	int dx = targetPos.x - posEnemy.x;  
+	int dy = targetPos.y - posEnemy.y; 
 
-	bool onJump   = map->isOnJump(posEnemy, size);
+	bool onJump = map->isOnJump(posEnemy, size);
 
-	// --- Arco de salto activo ---
-	if (lucIsJumping)
-	{
+	if (lucIsJumping) {
 		lucJumpAngle += LUC_JUMP_STEP;
-		if (lucJumpAngle >= 180)
-		{
+		if (lucJumpAngle >= 180) {
 			lucIsJumping = false;
-			posEnemy.y   = lucStartY;
+			posEnemy.y = lucStartY;
 			map->collisionMoveDown(posEnemy, size, &posEnemy.y);
 		}
-		else
-		{
+		else {
 			int jumpH  = spriteSize * LUC_JUMP_TILES;
 			posEnemy.y = int(lucStartY - jumpH * sin(lucJumpAngle * M_PI / 180.0));
-			if (lucJumpAngle < 90)
-			{
+			if (lucJumpAngle < 90) {
 				int dummy = posEnemy.y;
-				if (map->collisionMoveUp(posEnemy, size, &dummy))
-				{
+				if (map->collisionMoveUp(posEnemy, size, &dummy)) {
 					posEnemy.y   = dummy;
 					lucIsJumping = false;
 				}
 			}
-			else if (map->collisionMoveDown(posEnemy, size, &posEnemy.y))
-				lucIsJumping = false;
+			else if (map->collisionMoveDown(posEnemy, size, &posEnemy.y)) lucIsJumping = false;
 		}
-		// Deriva horizontal mientras salta
 		posXfrac += (dx > 0 ? 1.f : -1.f) * speed;
 		int step  = (int)posXfrac;
 		posXfrac -= (float)step;
@@ -428,137 +390,127 @@ void Enemy::chasingPlayer_Lucas(int deltaTime)
 		return;
 	}
 
-	// --- Gravedad ---
 	applyGravity(posEnemy, map, spriteSize);
 
-	// --- Jugador encima: usar escalera o trampolín ---
-	if (dy < -ts)
-	{
-		if (onJump)
-		{
+	if (dy < -ts) {
+		if (onJump) {		
 			lucIsJumping = true;
 			lucJumpAngle = 0;
-			lucStartY    = posEnemy.y;
+			lucStartY = posEnemy.y;
 			return;
 		}
 	}
 
-	// --- Movimiento horizontal hacia el jugador ---
-	if (dx != 0)
-	{
+	if (dx != 0) {
 		posXfrac += (dx > 0 ? 1.f : -1.f) * speed;
 		int step  = (int)posXfrac;
 		posXfrac -= (float)step;
 		posEnemy.x += step;
 
 		bool blocked = false;
-		if (dx > 0)
-		{
-			if (map->collisionMoveRight(posEnemy, size)) { posEnemy.x -= step; posXfrac = 0.f; blocked = true; }
+		if (dx > 0) {
+			if (map->collisionMoveRight(posEnemy, size)) { 
+				posEnemy.x -= step; 
+				posXfrac = 0.f; 
+				blocked = true; 
+			}
 			if (sprite->animation() != WALK_RIGHT) sprite->changeAnimation(WALK_RIGHT);
 		}
-		else
-		{
-			if (map->collisionMoveLeft(posEnemy, size)) { posEnemy.x -= step; posXfrac = 0.f; blocked = true; }
+		else {
+			if (map->collisionMoveLeft(posEnemy, size)) { 
+				posEnemy.x -= step; 
+				posXfrac = 0.f; 
+				blocked = true; 
+			}
 			if (sprite->animation() != WALK_LEFT) sprite->changeAnimation(WALK_LEFT);
 		}
 
-		// Rampa: subir pendiente como el jugador
+		//Para subir cuestas
 		if (!blocked && map->isOnCliff(posEnemy, size))
 			posEnemy.y -= (int)speed;
 
-		// Trampolín al moverse horizontalmente
+		//Si pasa por plataforma de salto
 		if (onJump && !lucIsJumping)
 		{
 			lucIsJumping = true;
 			lucJumpAngle = 0;
-			lucStartY    = posEnemy.y;
+			lucStartY = posEnemy.y;
 		}
 	}
-	else
-	{
-		// Parado pero detectando al jugador: mirar hacia él
+	else {
+		//Si bugs se para pero el pato lucas no llega, que mire hacia la direccion del bugs pero parado
 		int standAnim = (targetPos.x >= posEnemy.x) ? STAND_RIGHT : STAND_LEFT;
-		if (sprite->animation() != STAND_RIGHT && sprite->animation() != STAND_LEFT)
-			sprite->changeAnimation(standAnim);
-		else if (sprite->animation() != standAnim)
-			sprite->changeAnimation(standAnim);
+		if (sprite->animation() != STAND_RIGHT && sprite->animation() != STAND_LEFT) sprite->changeAnimation(standAnim);
+		else if (sprite->animation() != standAnim) sprite->changeAnimation(standAnim);
 	}
 }
 
-void Enemy::chasingPlayer_Tasmania(int deltaTime)
-{
+void Enemy::chasingPlayer_Tasmania(int deltaTime) {
 	const float ts   = (float)spriteSize;
 	const float dx   = (float)(targetPos.x - posEnemy.x);
 	const float dy   = (float)(targetPos.y - posEnemy.y);
 	const float dist = sqrtf(dx * dx + dy * dy);
 
-	if (dist > TAS_DETECT_TILES * ts)
-	{
-		if (tasState != TAS_IDLE)
-		{
+	if (dist > TAS_DETECT_TILES * ts) {
+		if (tasState != TAS_IDLE) {
 			tasState = TAS_IDLE;
 			sprite->changeAnimation(STAND_FRONT);
 		}
 		return;
 	}
 
-	if (dist > TAS_STOP_TILES * ts)
-	{
-		if (tasState != TAS_TORNADO)
-		{
-			tasState     = TAS_TORNADO;
-			tornadoYfrac = 0.f;
-			posXfrac     = 0.f;
-			sprite->changeAnimation(TORNADO);
+	float walkThreshold = (tasState == TAS_WALK) ? ts * 2.f : ts;
+	if (fabsf(dy) < walkThreshold) {
+		if (tasState != TAS_WALK) {
+			tasState = TAS_WALK;
+			posXfrac = 0.f;
 		}
-		float nx = dx / dist;
-		float ny = dy / dist;
+		const glm::ivec2 size(spriteSize, spriteSize);
+		applyGravity(posEnemy, map, spriteSize);
 
-		posXfrac     += nx * speed;
-		tornadoYfrac += ny * speed;
-		int stepX = (int)posXfrac;
-		int stepY = (int)tornadoYfrac;
-		posXfrac     -= (float)stepX;
-		tornadoYfrac -= (float)stepY;
-		posEnemy.x   += stepX;
-		posEnemy.y   += stepY;
+		dir = (dx > 0.f) ? 1.f : -1.f;
+		posXfrac += dir * TAS_WALK_SPEED;
+		int step  = (int)posXfrac;
+		posXfrac -= (float)step;
+		posEnemy.x += step;
+
+		bool blocked = false;
+		if (dir > 0.f) {
+			if (map->collisionMoveRight(posEnemy, size, true)) { 
+				posEnemy.x -= step; 
+				posXfrac = 0.f; 
+				blocked = true; 
+			}
+			if (sprite->animation() != WALK_RIGHT) sprite->changeAnimation(WALK_RIGHT);
+		}
+		else {
+			if (map->collisionMoveLeft(posEnemy, size, true)) { 
+				posEnemy.x -= step; 
+				posXfrac = 0.f; 
+				blocked = true; 
+			}
+			if (sprite->animation() != WALK_LEFT) sprite->changeAnimation(WALK_LEFT);
+		}
+		if (!blocked && map->isOnCliff(posEnemy, size)) posEnemy.y -= (int)TAS_WALK_SPEED;
 		return;
 	}
 
-	if (tasState != TAS_WALK)
-	{
-		tasState = TAS_WALK;
+	//Movimiento tornado que traspasa todoo
+	if (tasState != TAS_TORNADO) {
+		tasState = TAS_TORNADO;
+		tornadoYfrac = 0.f;
 		posXfrac = 0.f;
+		sprite->changeAnimation(TORNADO);
 	}
+	float nx = dx / dist;
+	float ny = dy / dist;
 
-	const glm::ivec2 size(spriteSize, spriteSize);
-	applyGravity(posEnemy, map, spriteSize);
-
-	dir = (dx > 0.f) ? 1.f : -1.f;
-	posXfrac += dir * TAS_WALK_SPEED;
-	int step  = (int)posXfrac;
-	posXfrac -= (float)step;
-	posEnemy.x += step;
-
-	if (dir > 0.f)
-	{
-		if (map->collisionMoveRight(posEnemy, size, true))
-		{
-			posEnemy.x -= step;
-			posXfrac = 0.f;
-		}
-		if (sprite->animation() != WALK_RIGHT)
-			sprite->changeAnimation(WALK_RIGHT);
-	}
-	else
-	{
-		if (map->collisionMoveLeft(posEnemy, size, true))
-		{
-			posEnemy.x -= step;
-			posXfrac = 0.f;
-		}
-		if (sprite->animation() != WALK_LEFT)
-			sprite->changeAnimation(WALK_LEFT);
-	}
+	posXfrac += nx * speed;
+	tornadoYfrac += ny * speed;
+	int stepX = (int)posXfrac;
+	int stepY = (int)tornadoYfrac;
+	posXfrac -= (float)stepX;
+	tornadoYfrac -= (float)stepY;
+	posEnemy.x += stepX;
+	posEnemy.y += stepY;
 }
