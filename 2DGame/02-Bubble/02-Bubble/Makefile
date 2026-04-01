@@ -1,7 +1,7 @@
 CXX      = g++
 CC       = gcc
 CXXFLAGS = -std=c++17 -Wall -O2
-CFLAGS   = -Wall -O2
+CFLAGS   = -w -O2
 
 # SOIL path (use absolute to avoid space issues)
 SOIL_DIR = $(shell cd ../../../libs/Simple\ OpenGL\ Image\ Library/src && pwd)

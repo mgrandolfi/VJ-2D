@@ -1,0 +1,54 @@
+=======================================
+  Bugs Bunny Crazy Castle 3 - Clon 2D
+=======================================
+
+INTEGRANTS DEL GRUP
+-------------------
+- Mateus Grandolfi
+- Carolina Rouj
+
+FUNCIONALITATS IMPLEMENTADES
+-----------------------------
+- Estructura de 4 pantalles: menú principal, joc, pausa i crèdits
+- 5 nivells complets amb mecànica de claus i portes
+- Moviment del jugador: caminar esquerra/dreta, pujar/baixar escales, entrar per portes
+- 3 enemics per nivell amb IA diferenciada:
+    · Piolin: patrulla horitzontal
+    · Lucas: persecució horitzontal del jugador
+    · Silvestre: persecució amb ús d'escales
+    · Tasmania: persecució agressiva, pot seguir el jugador a qualsevol lloc
+- 3 vides amb sistema de respawn
+- Pesos/roques empenyibles que maten enemics en contacte (caiguda o empenta)
+- 4 objectes col·leccionables:
+    · Pes (100t): empenyible per matar enemics
+    · Bomba: explota i elimina enemics propers
+    · Botes: augmenten la velocitat del jugador
+    · Rellotge: congela els enemics temporalment
+- Habitacions amb portes de connexió entre zones
+- Elements de nivell: terra de salt (nivell 1), escales amb plataformes (nivell 2)
+- Sala secreta amb recompenses
+- HUD complet: cors de vida, claus recollides, objecte actual, temporitzador
+- So i música: música de fons per nivell, efectes de so per accions
+- Tecles de depuració: G (mode déu), K (matar tots), 1-5 (selecció de nivell), P (pausa)
+- Botó de silenciar àudio
+
+INSTRUCCIONS DEL JOC
+---------------------
+Objectiu:
+  Recull totes les claus de cada nivell i arriba a la porta de sortida
+  per avançar al següent nivell. Evita els enemics o utilitza objectes
+  per eliminar-los.
+
+Controls:
+  Fletxa esquerra / dreta  — Moure el personatge
+  Fletxa amunt / avall     — Pujar i baixar escales
+  Z                        — Utilitzar l'objecte recollit
+  P                        — Pausar el joc
+  ESC                      — Tornar al menú principal
+
+Consells:
+  - Empenya els pesos contra els enemics per eliminar-los
+  - Les bombes exploten després d'un breu temps i eliminen enemics propers
+  - Les botes et fan més ràpid temporalment
+  - El rellotge congela tots els enemics durant uns segons
+  - Cada nivell té 3 claus que cal recollir abans de poder sortir
