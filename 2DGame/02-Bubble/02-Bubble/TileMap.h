@@ -7,11 +7,18 @@
 #include "ShaderProgram.h"
 
 
-// Class Tilemap is capable of loading a tile map from a text file in a very
-// simple format (see level01.txt for an example). With this information
-// it builds a single VBO that contains all tiles. As a result the render
-// method draws the whole map independently of what is visible.
-
+enum TileType
+{
+	TILE_EMPTY,
+	TILE_BLOCK,
+	TILE_LADDER,
+	TILE_DOOR,
+	TILE_JUMP,
+	TILE_WARP,
+	TILE_CLIFF,     // ramps / one-way slopes
+	TILE_ELEVATOR,  // vertical tunnel (up/down shaft)
+	TILE_SECRET     // secret door trigger (walk-through, Up to enter)
+};
 
 class TileMap
 {
@@ -20,20 +27,44 @@ private:
 	TileMap(const string &levelFile, const glm::vec2 &minCoords, ShaderProgram &program);
 
 public:
-	// Tile maps can only be created inside an OpenGL context
 	static TileMap *createTileMap(const string &levelFile, const glm::vec2 &minCoords, ShaderProgram &program);
 
 	~TileMap();
 
 	void render() const;
 	void free();
-	
-	int getTileSize() const { return tileSize; }
 
-	bool collisionMoveLeft(const glm::ivec2 &pos, const glm::ivec2 &size) const;
-	bool collisionMoveRight(const glm::ivec2 &pos, const glm::ivec2 &size) const;
+	int getTileSize() const { return tileSize; }
+	int getMapWidth() const { return mapSize.x; }
+	int getMapHeight() const { return mapSize.y; }
+
+	// When blockLadders is true, TILE_LADDER blocks horizontal moves (ground enemies).
+	bool collisionMoveLeft(const glm::ivec2 &pos, const glm::ivec2 &size,
+	                       bool blockLadders = false) const;
+	bool collisionMoveRight(const glm::ivec2 &pos, const glm::ivec2 &size,
+	                        bool blockLadders = false) const;
 	bool collisionMoveDown(const glm::ivec2 &pos, const glm::ivec2 &size, int *posY) const;
-	
+	bool collisionMoveUp(const glm::ivec2 &pos, const glm::ivec2 &size, int *posY) const;
+
+	// Tile type queries at world pixel positions
+	TileType tileTypeAt(int worldX, int worldY) const;
+	bool isOnLadder(const glm::ivec2 &pos, const glm::ivec2 &size) const;
+	bool isOnCliff(const glm::ivec2 &pos, const glm::ivec2 &size) const;
+	bool isOnDoor(const glm::ivec2 &pos, const glm::ivec2 &size) const;
+	bool isOnSecret(const glm::ivec2 &pos, const glm::ivec2 &size) const;
+	bool isOnJump(const glm::ivec2 &pos, const glm::ivec2 &size) const;
+	bool isOnWarp(const glm::ivec2 &pos, const glm::ivec2 &size) const;
+
+	// Returns the tile ID of the TILE_ELEVATOR directly below the sprite (-1 if none)
+	int        getTileIdBelow(const glm::ivec2 &pos, const glm::ivec2 &size) const;
+	// Returns world-pixel top-left of the first cell with this tile ID (-1,-1 if none)
+	glm::ivec2 findTileId(int tileId) const;
+	// Returns the raw tile ID stored at map cell (tx, ty), or -1 if out of bounds
+	int        getTileIdAt(int tx, int ty) const;
+
+	void setTileType(int tile, TileType type);
+	void setTileTypeRange(int tileFrom, int tileTo, TileType type);
+
 private:
 	bool loadLevel(const string &levelFile);
 	void prepareArrays(const glm::vec2 &minCoords, ShaderProgram &program);
@@ -48,10 +79,9 @@ private:
 	Texture tilesheet;
 	glm::vec2 tileTexSize;
 	int *map;
-
+	TileType *tileTypeMap;
+	int totalTilesMap;
 };
 
 
 #endif // _TILE_MAP_INCLUDE
-
-

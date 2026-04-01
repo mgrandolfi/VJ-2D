@@ -10,7 +10,7 @@ SOIL_DIR = $(shell cd ../../../libs/Simple\ OpenGL\ Image\ Library/src && pwd)
 INCLUDES = -I"$(SOIL_DIR)"
 
 # Libraries (system packages on Fedora: glew-devel glfw-devel mesa-libGL-devel)
-LIBS = -lGLEW -lglfw -lGL
+LIBS = -lGLEW -lglfw -lGL -lSDL2 -lSDL2_mixer
 
 # C++ source files for 02-Bubble
 CPP_SRCS = \
@@ -22,7 +22,8 @@ CPP_SRCS = \
   Shader.cpp \
   ShaderProgram.cpp \
   Texture.cpp \
-  TileMap.cpp
+  TileMap.cpp \
+  Enemy.cpp \
 
 CPP_OBJS = $(CPP_SRCS:.cpp=.o)
 
