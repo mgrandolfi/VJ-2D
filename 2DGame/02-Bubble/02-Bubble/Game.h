@@ -62,6 +62,9 @@ public:
 	// HUD overlay (screen coords, 640x480 ortho) — used by Scene
 	void renderBitmapTextHud(const char *text, float x, float y, float pixel,
 	                           float r, float g, float b);
+	// Black outline (8-way) then fill; same font as renderBitmapTextHud
+	void renderBitmapTextHudOutlined(const char *text, float x, float y, float pixel,
+	                                 float r, float g, float b);
 
 private:
 	void initUI();

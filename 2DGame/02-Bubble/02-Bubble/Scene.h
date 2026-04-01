@@ -67,6 +67,7 @@ private:
 	void applyElevatorPairs();
 	void spawnEntities(int level);
 	void recreateWorldPickupSprites(int tileSize);
+	void configureItemsAtlas();
 	void renderHUD();
 	bool checkCollision(const glm::ivec2 &posA, const glm::ivec2 &posB,
 	                    const glm::ivec2 &sizeA, const glm::ivec2 &sizeB) const;
@@ -106,15 +107,18 @@ private:
 	Texture        heartTex;
 	Sprite        *heartSprite;
 
-	// Item/key sprites (single atlas: images/sprites/items.png 160x64, cells 32x32)
+	// Item/key sprites — atlas images/items.png (row-major 1-based indices; default 32×32px cells on this project’s 320² sheet)
 	Texture        itemTex;
 	Sprite        *itemSprite;       // world pickups (quad = tileSize)
 	Sprite        *itemHudSprite;    // carried-item icon in HUD (fixed size)
 	Sprite        *keyWorldSprite;   // keys in the level (smaller than tile)
 	Sprite        *keyHudSprite;     // one key icon + numeric counter in HUD
-	Sprite        *godHudSprite;     // god-mode icon (grayscale heart row)
+	Sprite        *godHudSprite;     // god-mode HUD icon (sprite #5)
 	Sprite        *godAuraSprites[3];
 	int            keyWorldPixelSize;
+	int            itemAtlasCols;
+	int            itemAtlasRows;
+	glm::vec2      itemAtlasCellUv;  // normalized (du, dv) per cell
 
 	// Main level vs secret room
 	TileMap       *mainMap;

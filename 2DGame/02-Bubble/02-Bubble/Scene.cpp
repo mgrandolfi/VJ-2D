@@ -1,5 +1,6 @@
 #include <iostream>
 #include <cmath>
+#include <algorithm>
 #include <glm/gtc/matrix_transform.hpp>
 #include "Scene.h"
 #include "Game.h"
@@ -17,15 +18,40 @@ namespace {
 	{
 		return glm::ivec2(tx * ts, (surfaceRow - 1) * ts);
 	}
+
+	// Row-major 1-based index (1 = top-left cell). Clamps to atlas bounds.
+	glm::vec2 atlasUv1Based(int n, int cols, int rows, const glm::vec2 &cell)
+	{
+		if (cols < 1) cols = 1;
+		if (rows < 1) rows = 1;
+		int z = std::max(0, n - 1);
+		const int maxCell = cols * rows - 1;
+		if (z > maxCell) z = maxCell;
+		const int col = z % cols;
+		const int row = z / cols;
+		return glm::vec2(float(col) * cell.x, float(row) * cell.y);
+	}
+
+	// ItemType order: WEIGHT, BOMB, BOOTS, CLOCK → atlas cells 1, 6, 2, 4
+	int itemAnimToAtlasNum(int animIdx)
+	{
+		static const int m[4] = {1, 6, 2, 4};
+		if (animIdx < 0 || animIdx > 3) return 1;
+		return m[animIdx];
+	}
 }
 
 #define SCREEN_X 0
 #define SCREEN_Y 16
 
-#define CAMERA_W 200.f   
-#define CAMERA_H 150.f   
+#define CAMERA_W 200.f
+#define CAMERA_H 150.f
 
-#define HUD_ICON_SIZE 24.f
+#define HUD_ICON_SIZE       24.f  // lives (hearts) only
+#define ITEM_HUD_ICON_SIZE  48.f  // carried item + god HUD (2× atlas icon)
+#define KEY_HUD_ICON_SIZE    55   // 25% larger than 44px base key HUD
+#define KEY_HUD_ICON_NUDGE_UP 17.f // raise HUD key (atlas padding vs digit + outline)
+#define GOD_AURA_PIXEL_SIZE  28   // 2× previous orbit sprites
 #define HUD_MARGIN    8.f
 
 #define INIT_PLAYER_X_TILES 17
@@ -92,6 +118,9 @@ Scene::Scene()
 	secretEnterPending = false;
 	secretLootTaken   = true;
 	secretExitCooldown = 0;
+	itemAtlasCols     = 10;
+	itemAtlasRows     = 10;
+	itemAtlasCellUv   = glm::vec2(0.1f, 0.1f);
 }
 
 Scene::~Scene()
@@ -145,42 +174,87 @@ void Scene::initShaders()
 	heartSprite->addKeyframe(0, glm::vec2(0.f, 0.f));
 	heartSprite->changeAnimation(0);
 
-	// Atlas 160x64: top row cells 0–3 items, cell 4 key; bottom: god icon + 3 auras
-	itemTex.loadFromFile("images/sprites/items.png", TEXTURE_PIXEL_FORMAT_RGBA);
-	const glm::vec2 cell(0.2f, 0.5f);
+	itemTex.loadFromFile("images/items.png", TEXTURE_PIXEL_FORMAT_RGBA);
+	itemTex.setWrapS(GL_CLAMP_TO_EDGE);
+	itemTex.setWrapT(GL_CLAMP_TO_EDGE);
+	itemTex.setMinFilter(GL_NEAREST);
+	itemTex.setMagFilter(GL_NEAREST);
+	configureItemsAtlas();
 
-	itemHudSprite = Sprite::createSprite(glm::ivec2(HUD_ICON_SIZE, HUD_ICON_SIZE),
-	                                    cell, &itemTex, &texProgram);
+	const glm::vec2 cell = itemAtlasCellUv;
+	const int ac = itemAtlasCols;
+	const int ar = itemAtlasRows;
+
+	itemHudSprite = Sprite::createSprite(glm::ivec2(int(ITEM_HUD_ICON_SIZE), int(ITEM_HUD_ICON_SIZE)),
+	                                     cell, &itemTex, &texProgram);
 	itemHudSprite->setNumberAnimations(4);
 	for (int i = 0; i < 4; ++i)
 	{
 		itemHudSprite->setAnimationSpeed(i, 1);
-		itemHudSprite->addKeyframe(i, glm::vec2(0.2f * float(i), 0.f));
+		itemHudSprite->addKeyframe(i, atlasUv1Based(itemAnimToAtlasNum(i), ac, ar, cell));
 	}
 	itemHudSprite->changeAnimation(0);
 
-	keyHudSprite = Sprite::createSprite(glm::ivec2(22, 22),
+	keyHudSprite = Sprite::createSprite(glm::ivec2(KEY_HUD_ICON_SIZE, KEY_HUD_ICON_SIZE),
 	                                    cell, &itemTex, &texProgram);
 	keyHudSprite->setNumberAnimations(1);
 	keyHudSprite->setAnimationSpeed(0, 1);
-	keyHudSprite->addKeyframe(0, glm::vec2(0.8f, 0.f));
+	keyHudSprite->addKeyframe(0, atlasUv1Based(3, ac, ar, cell));
 	keyHudSprite->changeAnimation(0);
 
-	godHudSprite = Sprite::createSprite(glm::ivec2(HUD_ICON_SIZE, HUD_ICON_SIZE),
+	godHudSprite = Sprite::createSprite(glm::ivec2(int(ITEM_HUD_ICON_SIZE), int(ITEM_HUD_ICON_SIZE)),
 	                                    cell, &itemTex, &texProgram);
 	godHudSprite->setNumberAnimations(1);
 	godHudSprite->setAnimationSpeed(0, 1);
-	godHudSprite->addKeyframe(0, glm::vec2(0.f, 0.5f));
+	godHudSprite->addKeyframe(0, atlasUv1Based(5, ac, ar, cell));
 	godHudSprite->changeAnimation(0);
 
 	for (int i = 0; i < 3; ++i)
 	{
-		godAuraSprites[i] = Sprite::createSprite(glm::ivec2(14, 14),
-		                                        cell, &itemTex, &texProgram);
+		godAuraSprites[i] = Sprite::createSprite(glm::ivec2(GOD_AURA_PIXEL_SIZE, GOD_AURA_PIXEL_SIZE),
+		                                         cell, &itemTex, &texProgram);
 		godAuraSprites[i]->setNumberAnimations(1);
 		godAuraSprites[i]->setAnimationSpeed(0, 1);
-		godAuraSprites[i]->addKeyframe(0, glm::vec2(0.2f * float(i + 1), 0.5f));
+		godAuraSprites[i]->addKeyframe(0, atlasUv1Based(7 + i, ac, ar, cell));
 		godAuraSprites[i]->changeAnimation(0);
+	}
+}
+
+void Scene::configureItemsAtlas()
+{
+	const int w = itemTex.width();
+	const int h = itemTex.height();
+	// Sprites use normalized UV quad size = one cell; cell must match real tile size in the PNG.
+	// items.png is 320×320 with 32×32 icons (10×10). Using w/5 (64px) samples 2×2 icons at once.
+	const int cellPxPrefer = 32;
+	itemAtlasCols   = 10;
+	itemAtlasRows   = 10;
+	itemAtlasCellUv = glm::vec2(0.1f, 0.1f);
+	if (w > 0 && h > 0 && (w % cellPxPrefer) == 0 && (h % cellPxPrefer) == 0)
+	{
+		itemAtlasCols   = w / cellPxPrefer;
+		itemAtlasRows   = h / cellPxPrefer;
+		itemAtlasCellUv = glm::vec2(float(cellPxPrefer) / float(w), float(cellPxPrefer) / float(h));
+		return;
+	}
+	// Fallback: exactly 5 columns of square cells (e.g. non–32-divisible width)
+	if (w >= 5 && h >= 5 && (w % 5) == 0)
+	{
+		const int cellPx = w / 5;
+		if (cellPx > 0 && (h % cellPx) == 0)
+		{
+			itemAtlasCols   = 5;
+			itemAtlasRows   = h / cellPx;
+			itemAtlasCellUv = glm::vec2(1.f / 5.f, float(cellPx) / float(h));
+			return;
+		}
+	}
+	if (w > 0 && h > 0)
+	{
+		const int guess = std::max(1, w / 32);
+		itemAtlasCols   = guess;
+		itemAtlasRows   = std::max(1, h / 32);
+		itemAtlasCellUv = glm::vec2(1.f / float(itemAtlasCols), 1.f / float(itemAtlasRows));
 	}
 }
 
@@ -317,7 +391,10 @@ void Scene::applyTileTypes() {
 }
 
 void Scene::recreateWorldPickupSprites(int ts) {
-	if (keyWorldSprite) delete keyWorldSprite; keyWorldSprite = NULL; 
+	if (keyWorldSprite) {
+		delete keyWorldSprite;
+		keyWorldSprite = NULL;
+	}
 	if (itemSprite) { 
 		delete itemSprite;     
 		itemSprite = NULL; 
@@ -328,19 +405,30 @@ void Scene::recreateWorldPickupSprites(int ts) {
 		keyWorldPixelSize = 10;
 	if (keyWorldPixelSize > ts - 2)
 		keyWorldPixelSize = ts - 2;
+	// Allow up to full tile so +25% below is not stuck at ts-2 (was invisible before)
+	keyWorldPixelSize = std::min(keyWorldPixelSize * 2, ts);
+	if (keyWorldPixelSize < 10)
+		keyWorldPixelSize = std::min(10, ts);
+	// Same +25% as HUD key; cap at tile size (pickup hitbox is still ts×ts in update())
+	keyWorldPixelSize = std::min((keyWorldPixelSize * 5 + 3) / 4, ts);
+	if (keyWorldPixelSize < 10)
+		keyWorldPixelSize = std::min(10, ts);
 
-	const glm::vec2 cell(0.2f, 0.5f);
-	keyWorldSprite = Sprite::createSprite(glm::ivec2(keyWorldPixelSize, keyWorldPixelSize), cell, &itemTex, &texProgram);
+	const glm::vec2 cell = itemAtlasCellUv;
+	const int ac = itemAtlasCols;
+	const int ar = itemAtlasRows;
+	keyWorldSprite = Sprite::createSprite(glm::ivec2(keyWorldPixelSize, keyWorldPixelSize),
+	                                      cell, &itemTex, &texProgram);
 	keyWorldSprite->setNumberAnimations(1);
 	keyWorldSprite->setAnimationSpeed(0, 1);
-	keyWorldSprite->addKeyframe(0, glm::vec2(0.8f, 0.f));
+	keyWorldSprite->addKeyframe(0, atlasUv1Based(3, ac, ar, cell));
 	keyWorldSprite->changeAnimation(0);
 
-	itemSprite = Sprite::createSprite(glm::ivec2(ts, ts), cell, &itemTex, &texProgram);
+	itemSprite = Sprite::createSprite(glm::ivec2(ts * 2, ts * 2), cell, &itemTex, &texProgram);
 	itemSprite->setNumberAnimations(4);
 	for (int i = 0; i < 4; ++i) {
 		itemSprite->setAnimationSpeed(i, 1);
-		itemSprite->addKeyframe(i, glm::vec2(0.2f * float(i), 0.f));
+		itemSprite->addKeyframe(i, atlasUv1Based(itemAnimToAtlasNum(i), ac, ar, cell));
 	}
 	itemSprite->changeAnimation(0);
 }
@@ -377,13 +465,15 @@ void Scene::spawnEntities(int level)
 		spawnEnemy(1, LUCAS, L1_LUCAS_X, L1_LUCAS_Y);
 		// spawnEnemy(1, TASMANIA, L1_TASMANIA_X, L1_TASMANIA_Y);
 		keysRequired = 3;
-		keys[0] = { keyPickupPos(ts, kz, 5, 15), false };
-		keys[1] = { keyPickupPos(ts, kz, 10, 11), false };
-		keys[2] = { keyPickupPos(ts, kz, 15, 6), false };
-		items[0] = { ITEM_WEIGHT, itemPickupPos(ts, 3, 15), false };
-		items[1] = { ITEM_BOMB,   itemPickupPos(ts, 12, 11), false };
-		items[2] = { ITEM_BOOTS,  itemPickupPos(ts, 8, 7), false };
-		items[3] = { ITEM_CLOCK,  itemPickupPos(ts, 16, 7), false };
+		// Keys spread across 3 heights: upper-left platform (row5), upper-right (row10), main floor (row13)
+		keys[0] = { keyPickupPos(ts, kz, 7,  5),  false };
+		keys[1] = { keyPickupPos(ts, kz, 13, 10), false };
+		keys[2] = { keyPickupPos(ts, kz, 9,  13), false };
+		// Items on mid platforms and main floor for coverage
+		items[0] = { ITEM_WEIGHT, itemPickupPos(ts, 5,  9),  false };
+		items[1] = { ITEM_BOMB,   itemPickupPos(ts, 8,  7),  false };
+		items[2] = { ITEM_BOOTS,  itemPickupPos(ts, 4,  13), false };
+		items[3] = { ITEM_CLOCK,  itemPickupPos(ts, 16, 15), false };
 		itemCount = 4;
 		break;
 
@@ -392,13 +482,14 @@ void Scene::spawnEntities(int level)
 		spawnEnemy(0, LUCAS,  L2_LUCAS_X,  L2_LUCAS_Y);
 		spawnEnemy(1, PIOLIN, L2_PIOLIN_X, L2_PIOLIN_Y);
 		keysRequired = 3;
-		keys[0] = { keyPickupPos(ts, kz, 5, 14), false };
-		keys[1] = { keyPickupPos(ts, kz, 10, 8), false };
-		keys[2] = { keyPickupPos(ts, kz, 17, 3), false };
-		items[0] = { ITEM_WEIGHT, itemPickupPos(ts, 7, 14), false };
-		items[1] = { ITEM_BOMB,   itemPickupPos(ts, 15, 8), false };
-		items[2] = { ITEM_BOOTS,  itemPickupPos(ts, 4, 8), false };
-		items[3] = { ITEM_CLOCK,  itemPickupPos(ts, 12, 3), false };
+		// Keys on upper platform (row4) and mid platform (row14); items on lower platform (row16)
+		keys[0] = { keyPickupPos(ts, kz, 7,  4),  false };
+		keys[1] = { keyPickupPos(ts, kz, 9,  14), false };
+		keys[2] = { keyPickupPos(ts, kz, 16, 14), false };
+		items[0] = { ITEM_WEIGHT, itemPickupPos(ts, 2,  16), false };
+		items[1] = { ITEM_BOMB,   itemPickupPos(ts, 15, 4),  false };
+		items[2] = { ITEM_BOOTS,  itemPickupPos(ts, 10, 16), false };
+		items[3] = { ITEM_CLOCK,  itemPickupPos(ts, 17, 16), false };
 		itemCount = 4;
 		break;
 
@@ -407,13 +498,14 @@ void Scene::spawnEntities(int level)
 		spawnEnemy(0, PIOLIN,    L3_PIOLIN_X,    L3_PIOLIN_Y);
 		spawnEnemy(1, GHOST, L3_SILVESTRE_X, L3_SILVESTRE_Y);
 		keysRequired = 3;
-		keys[0] = { keyPickupPos(ts, kz, 5, 15), false };
-		keys[1] = { keyPickupPos(ts, kz, 10, 9), false };
-		keys[2] = { keyPickupPos(ts, kz, 15, 5), false };
-		items[0] = { ITEM_WEIGHT, itemPickupPos(ts, 3, 15), false };
-		items[1] = { ITEM_BOMB,   itemPickupPos(ts, 12, 9), false };
-		items[2] = { ITEM_BOOTS,  itemPickupPos(ts, 8, 6), false };
-		items[3] = { ITEM_CLOCK,  itemPickupPos(ts, 16, 5), false };
+		// Keys on both upper platforms (row8) and bottom floor (row19); items on mid platform (row15)
+		keys[0] = { keyPickupPos(ts, kz, 7,  8),  false };
+		keys[1] = { keyPickupPos(ts, kz, 14, 8),  false };
+		keys[2] = { keyPickupPos(ts, kz, 2,  19), false };
+		items[0] = { ITEM_WEIGHT, itemPickupPos(ts, 1,  15), false };
+		items[1] = { ITEM_BOMB,   itemPickupPos(ts, 12, 15), false };
+		items[2] = { ITEM_BOOTS,  itemPickupPos(ts, 15, 19), false };
+		items[3] = { ITEM_CLOCK,  itemPickupPos(ts, 16, 8),  false };
 		itemCount = 4;
 		break;
 
@@ -422,13 +514,15 @@ void Scene::spawnEntities(int level)
 		spawnEnemy(0, LUCAS,    L4_LUCAS_X,    L4_LUCAS_Y);
 		spawnEnemy(1, TASMANIA, L4_TASMANIA_X, L4_TASMANIA_Y);
 		keysRequired = 3;
-		keys[0] = { keyPickupPos(ts, kz, 7, 14), false };
-		keys[1] = { keyPickupPos(ts, kz, 10, 8), false };
-		keys[2] = { keyPickupPos(ts, kz, 16, 3), false };
-		items[0] = { ITEM_WEIGHT, itemPickupPos(ts, 5, 14), false };
-		items[1] = { ITEM_BOMB,   itemPickupPos(ts, 14, 8), false };
-		items[2] = { ITEM_BOOTS,  itemPickupPos(ts, 4, 8), false };
-		items[3] = { ITEM_CLOCK,  itemPickupPos(ts, 12, 3), false };
+		// Keys on upper castle (row7), mid ladders (row13), and bottom floor (row19)
+		keys[0] = { keyPickupPos(ts, kz, 9,  7),  false };
+		keys[1] = { keyPickupPos(ts, kz, 5,  13), false };
+		keys[2] = { keyPickupPos(ts, kz, 17, 19), false };
+		// Items on bottom floor and mid platforms (row16)
+		items[0] = { ITEM_WEIGHT, itemPickupPos(ts, 3,  19), false };
+		items[1] = { ITEM_BOMB,   itemPickupPos(ts, 14, 13), false };
+		items[2] = { ITEM_BOOTS,  itemPickupPos(ts, 11, 16), false };
+		items[3] = { ITEM_CLOCK,  itemPickupPos(ts, 2,  16), false };
 		itemCount = 4;
 		break;
 
@@ -438,13 +532,15 @@ void Scene::spawnEntities(int level)
 		spawnEnemy(1, TASMANIA,  L5_TASMANIA_X,  L5_TASMANIA_Y);
 		spawnEnemy(2, LUCAS,     L5_LUCAS_X,     L5_LUCAS_Y);
 		keysRequired = 3;
-		keys[0] = { keyPickupPos(ts, kz, 7, 14), false };
-		keys[1] = { keyPickupPos(ts, kz, 10, 8), false };
-		keys[2] = { keyPickupPos(ts, kz, 16, 3), false };
-		items[0] = { ITEM_WEIGHT, itemPickupPos(ts, 5, 14), false };
-		items[1] = { ITEM_BOMB, itemPickupPos(ts, 14, 8), false };
-		items[2] = { ITEM_BOOTS, itemPickupPos(ts, 4, 8), false };
-		items[3] = { ITEM_CLOCK, itemPickupPos(ts, 12, 3), false };
+		// Keys on upper platform (row9 via ladder), mid-left (row11), and bottom floor (row19)
+		keys[0] = { keyPickupPos(ts, kz, 17, 9),  false };
+		keys[1] = { keyPickupPos(ts, kz, 4,  11), false };
+		keys[2] = { keyPickupPos(ts, kz, 9,  19), false };
+		// Items spread: bottom (weight/clock), mid-right platform (bomb), mid-left (boots)
+		items[0] = { ITEM_WEIGHT, itemPickupPos(ts, 3,  19), false };
+		items[1] = { ITEM_BOMB,   itemPickupPos(ts, 16, 14), false };
+		items[2] = { ITEM_BOOTS,  itemPickupPos(ts, 6,  11), false };
+		items[3] = { ITEM_CLOCK,  itemPickupPos(ts, 13, 19), false };
 		itemCount = 4;
 		break;
 	}
@@ -568,7 +664,7 @@ void Scene::update(int deltaTime)
 		if (checkCollision(playerPos, items[i].pos, playerSize, pickupSize)) {
 			items[i].collected = true;
 			hasItem     = true;
-			carriedItem = secretLoot.type;
+			carriedItem = items[i].type;
 		}
 	}
 
@@ -578,57 +674,6 @@ void Scene::update(int deltaTime)
 			keys[i].collected = true;
 			keysCollected++;
 		}
-
-		for (int i = 0; i < itemCount; ++i) {
-			if (items[i].collected) continue;
-			if (checkCollision(playerPos, items[i].pos, playerSize, pickupSize)) {
-				items[i].collected = true;
-				hasItem     = true;
-				carriedItem = items[i].type;
-			}
-		}
-
-		for (int i = 0; i < keysRequired; ++i) {
-			if (keys[i].collected) continue;
-			if (checkCollision(playerPos, keys[i].pos, playerSize, pickupSize)) {
-				keys[i].collected = true;
-				keysCollected++;
-			}
-		}
-
-		if (hasItem && Game::instance().getKey(GLFW_KEY_Z)) {
-			hasItem = false;
-			switch (carriedItem) {
-			case ITEM_CLOCK:
-				enemiesFrozen = true;
-				freezeTimer   = 5000.f;
-				break;
-
-			case ITEM_BOOTS:
-				player->applyBoots(5000);
-				break;
-
-			case ITEM_BOMB:
-				for (int i = 0; i < activeEnemies; ++i) {
-					if (!enemies[i]->isAlive()) continue;
-					glm::ivec2 diff = enemies[i]->getPosition() - playerPos;
-					if (abs(diff.x) < 3 * ts && abs(diff.y) < 3 * ts) enemies[i]->kill();
-				}
-				break;
-
-			case ITEM_WEIGHT:
-				for (int i = 0; i < activeEnemies; ++i) {
-					if (!enemies[i]->isAlive()) continue;
-					glm::ivec2 ePos = enemies[i]->getPosition();
-					int dx = abs(ePos.x - playerPos.x);
-					int dy = ePos.y - playerPos.y;
-					if (dx < ts * 3 && dy > 0 && dy < ts * 8) enemies[i]->kill();
-				}
-				break;
-			}
-		}
-
-		if (keysCollected >= keysRequired && map->isOnDoor(playerPos, playerSize)) levelComplete = true;
 	}
 
 	if (hasItem && Game::instance().getKey(GLFW_KEY_Z)) {
@@ -694,7 +739,7 @@ void Scene::render()
 	map->render();
 
 	const int ts = map->getTileSize();
-	
+
 	for (int i = 0; i < keysRequired; ++i) {
 		if (keys[i].collected) continue;
 		texProgram.setUniform4f("color", 1.f, 1.f, 1.f, 1.f);
@@ -706,7 +751,7 @@ void Scene::render()
 	for (int i = 0; i < itemCount; ++i) {
 		if (items[i].collected) continue;
 		itemSprite->changeAnimation(int(items[i].type));
-		itemSprite->setPosition(glm::vec2(items[i].pos));
+		itemSprite->setPosition(glm::vec2(items[i].pos) - glm::vec2(ts / 2, ts / 2));
 		itemSprite->render();
 	}
 
@@ -722,7 +767,9 @@ void Scene::render()
 		const float t = currentTime * 0.004f;
 		for (int i = 0; i < 3; ++i) {
 			float ang = t + float(i) * (2.f * float(M_PI) / 3.f);
-			glm::vec2 orb(pp.x + std::cos(ang) * 26.f + ps / 2.f - 7.f, pp.y + std::sin(ang) * 16.f + ps / 2.f - 7.f);
+			const float ah = float(GOD_AURA_PIXEL_SIZE) * 0.5f;
+			glm::vec2 orb(pp.x + std::cos(ang) * 26.f + ps / 2.f - ah,
+			              pp.y + std::sin(ang) * 16.f + ps / 2.f - ah);
 			texProgram.setUniform4f("color", 1.f, 0.92f, 0.35f, 0.85f);
 			godAuraSprites[i]->setPosition(orb);
 			godAuraSprites[i]->render();
@@ -754,27 +801,37 @@ void Scene::renderHUD()
 	}
 
 	{
-		float ky = HUD_MARGIN + HUD_SPACING;
+		const float ky = HUD_MARGIN + HUD_SPACING;
+		const float keyTextPixel = 4.f;
+		const float textY = ky + 2.f;
+		// Vertically center key icon with digits, then nudge up slightly
+		const float keyIconY = textY + (7.f * keyTextPixel) * 0.5f - float(KEY_HUD_ICON_SIZE) * 0.5f
+		                       - KEY_HUD_ICON_NUDGE_UP;
 		texProgram.setUniform4f("color", 1.f, 1.f, 1.f, 1.f);
-		keyHudSprite->setPosition(glm::vec2(HUD_MARGIN, ky));
+		keyHudSprite->setPosition(glm::vec2(HUD_MARGIN, keyIconY));
 		keyHudSprite->render();
 		char buf[8];
 		snprintf(buf, sizeof(buf), "%d", keysCollected);
-		Game::instance().renderBitmapTextHud(buf, HUD_MARGIN + 28.f, ky + 2.f, 4.f, 1.f, 0.95f, 0.35f);
+		Game::instance().renderBitmapTextHudOutlined(buf,
+		                                             HUD_MARGIN + float(KEY_HUD_ICON_SIZE) + 6.f,
+		                                             textY,
+		                                             keyTextPixel,
+		                                             1.f, 1.f, 1.f);
 	}
 
 	if (hasItem) {
 		texProgram.setUniform4f("color", 1.f, 1.f, 1.f, 1.f);
 		itemHudSprite->changeAnimation(int(carriedItem));
-		itemHudSprite->setPosition(glm::vec2(HUD_MARGIN, 480.f - HUD_MARGIN - HUD_ICON_SIZE));
+		itemHudSprite->setPosition(glm::vec2(HUD_MARGIN, 480.f - HUD_MARGIN - ITEM_HUD_ICON_SIZE));
 		itemHudSprite->render();
 	}
 
-	if (player->isGodMode()) {
-		texProgram.setUniform4f("color", 0.f, 1.f, 0.f, 0.7f);
-		heartSprite->setPosition(glm::vec2(640.f - HUD_MARGIN - HUD_ICON_SIZE, HUD_MARGIN));
-		heartSprite->render();
-		//NOTE - añadir sprite the arco brillante o algo para que se note mejor el modo dios, el corazon verde no se ve muy bien
+	if (player->isGodMode())
+	{
+		texProgram.setUniform4f("color", 1.f, 1.f, 1.f, 1.f);
+		godHudSprite->setPosition(glm::vec2(640.f - HUD_MARGIN - ITEM_HUD_ICON_SIZE,
+		                                    480.f - HUD_MARGIN - ITEM_HUD_ICON_SIZE));
+		godHudSprite->render();
 	}
 
 	texProgram.setUniform4f("color", 1.f, 1.f, 1.f, 1.f);

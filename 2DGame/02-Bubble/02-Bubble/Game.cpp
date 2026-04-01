@@ -430,6 +430,17 @@ void Game::renderBitmapTextHud(const char *text, float x, float y, float pixel,
 	}
 }
 
+void Game::renderBitmapTextHudOutlined(const char *text, float x, float y, float pixel,
+                                       float r, float g, float b)
+{
+	static const float o = 1.f;
+	static const int kDx[] = {-1, 1, 0, 0, -1, -1, 1, 1};
+	static const int kDy[] = {0, 0, -1, 1, -1, 1, -1, 1};
+	for (int i = 0; i < 8; ++i)
+		renderBitmapTextHud(text, x + float(kDx[i]) * o, y + float(kDy[i]) * o, pixel, 0.f, 0.f, 0.f);
+	renderBitmapTextHud(text, x, y, pixel, r, g, b);
+}
+
 void Game::changeState(GameState s)
 {
 	state = s;
