@@ -1,0 +1,55 @@
+=======================================
+  Bugs Bunny Crazy Castle 3 - Clon 2D
+=======================================
+
+INTEGRANTS DEL GRUP
+-------------------
+- Carolina Rodríguez Ujano
+- Mateus Grandolfi Albuquerque
+
+FUNCIONALITATS IMPLEMENTADES
+-----------------------------
+- Estructura de 4 pantalles: menú principal, joc, instruccions i crèdits
+- 5 nivells complets amb mecànica de claus i portes
+- Moviment del jugador: caminar esquerra/dreta, pujar/baixar escales, entrar per portes,
+  fer servir jump floors i warp floors.
+- 3 enemics per nivell amb moviments diferenciats:
+    - Piolin: patrulla horitzontal
+    - Lucas: persecució horitzontal del jugador
+    - Ghost: patrulla horitzontal
+    - Tasmania: persecució agressiva, pot seguir el jugador a qualsevol lloc i es transforma
+- 3 vides amb sistema de respawn
+- Si Bugs Bunny mor, es retorna al menú principal
+- Si es guanya la partida, surt una pantalla amb el missatge "YOU WON!", amb un botó per
+  tornar al menú
+- Pes empenyible que mata enemics en contacte (caiguda o empenta)
+- 4 objectes utilitzables:
+    - Pes (100t): empenyible per matar enemics
+    - Bomba: explota i elimina enemics propers
+    - Botes: augmenten la velocitat del jugador
+    - Rellotge: congela els enemics temporalment
+- Avançar al següent nivell fent servir la porta de nivell un cop s'han agafat les 3 claus
+- Level items: jump floor i warp floor
+- Sala secreta amb recompenses
+- HUD complet: cors de vida, claus recollides, objecte actual (si n'hi ha algun), icona
+  de godmode quan s'activa
+- So i música: música de fons per nivell, efectes de so per accions
+- Tecles de depuració: G (god mode), K (agafar totes les claus), 1-5 (selecció de nivell)
+- Botó de silenciar àudio
+
+INSTRUCCIONS DEL JOC
+---------------------
+Objectiu:
+  Recull totes les claus de cada nivell i arriba a la porta de sortida
+  per avançar al següent nivell. Evita els enemics o utilitza objectes
+  per eliminar-los.
+
+Controls:
+  Fletxa esquerra / dreta  - Moure el personatge
+  Fletxa amunt / avall     - Pujar i baixar escales
+  Fletxa amunt		   - Obre portes, utilitza warp floors, obre cofre final
+  Z                        - Utilitzar l'objecte recollit
+  P                        - Pausar el joc
+  ESC                      - Tornar al menú principal
+  M                        - Silenciar/activar àudio
+  G			   - Activa/desactiva godmode

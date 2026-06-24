@@ -1,38 +1,147 @@
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 #include <glm/gtc/matrix_transform.hpp>
+#include <cstdint>
 #include <cstring>
+#include <cctype>
 #include "Game.h"
 
+#ifdef USE_SDL
+#include <SDL2/SDL.h>
+#include <SDL2/SDL_mixer.h>
 
-// Button layout on the menu.png background (measured from menu.png pixel positions)
-static const float MENU_BTN_X = 172.f;
-static const float MENU_BTN_W = 296.f;
-static const float MENU_BTN_H = 52.f;
-static const float MENU_BTN_Y[] = { 204.f, 282.f, 360.f };
+Mix_Music* musicMenu;
+Mix_Music* musicLevel1;
+Mix_Music* musicLevel2;
+Mix_Music* musicLevel3;
+Mix_Music* musicLevel4;
+Mix_Music* musicLevel5;
+Mix_Music* musicWin;
+Mix_Music* musicPause;
+Mix_Music* musicCredits;
 
-// Instructions screen back button (bottom center of instructions.png)
-static const float INSTR_BTN_X = 230.f;
-static const float INSTR_BTN_Y = 430.f;
-static const float INSTR_BTN_W = 180.f;
-static const float INSTR_BTN_H = 36.f;
+static Mix_Chunk* sfxFreeze;
+static Mix_Chunk* sfxExplosion;
+static Mix_Chunk* sfxGodMode;
+static Mix_Chunk* sfxItem;
+static Mix_Chunk* sfxKey;
+static Mix_Chunk* sfxBoots;
+static Mix_Chunk* sfxWarp;
+#endif
 
-// Pause overlay — button positions measured from pause.png pixel analysis
-static const float PAUSE_BTN_X = 205.f;
-static const float PAUSE_BTN_W = 250.f;
-static const float PAUSE_BTN_H = 32.f;
-static const float PAUSE_BTN_Y[] = { 213.f, 273.f, 333.f };
+// Button slots de menu
+static const float MENU_BTN_X = 222.f;
+static const float MENU_BTN_W = 196.f;
+static const float MENU_BTN_H = 55.f;
+static const float MENU_BTN_Y[] = { 160.f, 265.f, 365.f };
+
+// Instrucciones
+static const float INSTR_BTN_X = 258.f;
+static const float INSTR_BTN_Y = 440.f;
+static const float INSTR_BTN_W = 126.f;
+static const float INSTR_BTN_H = 34.f;
+
+static const float PAUSE_ROW_X = 100.f;
+static const float PAUSE_ROW_W = 440.f;
+static const float PAUSE_ROW_H = 44.f;
+static const float PAUSE_ROW_Y[] = { 196.f, 264.f, 332.f };
+
+static const float BTN_PLAY_CROP[] = { 157.f, 94.f, 353.f, 179.f };       // 506x274
+static const float BTN_INSTR_CROP[] = { 134.f, 217.f, 506.f, 258.f };     // 640x476
+static const float BTN_CRED_CROP[] = { 67.f, 101.f, 418.f, 160.f };       // 486x263
+static const float BTN_BACK_CROP[] = { 8.f, 8.f, 573.f, 208.f };         // 582x217
+
+static const float MUTE_SIZE = 36.f;
+static const float MUTE_X    = 640.f - MUTE_SIZE - 6.f;
+static const float MUTE_Y    = 6.f;
+
+
+namespace {
+
+const uint8_t G_A[] = {0x0E, 0x11, 0x11, 0x1F, 0x11, 0x11, 0x11};
+const uint8_t G_B[] = {0x0E, 0x11, 0x11, 0x0E, 0x11, 0x11, 0x0E};
+const uint8_t G_C[] = {0x0E, 0x11, 0x10, 0x10, 0x10, 0x11, 0x0E};
+// Flat left spine, open right — reads as D (not O)
+const uint8_t G_D[] = {0x1E, 0x11, 0x11, 0x11, 0x11, 0x11, 0x1E};
+const uint8_t G_0[] = {0x0E, 0x11, 0x11, 0x11, 0x11, 0x11, 0x0E};
+const uint8_t G_1[] = {0x04, 0x0C, 0x04, 0x04, 0x04, 0x04, 0x0E};
+const uint8_t G_2[] = {0x0E, 0x11, 0x01, 0x02, 0x04, 0x08, 0x1F};
+const uint8_t G_3[] = {0x1F, 0x02, 0x04, 0x02, 0x01, 0x11, 0x0E};
+const uint8_t G_E[] = {0x1F, 0x10, 0x10, 0x1E, 0x10, 0x10, 0x1F};
+const uint8_t G_H[] = {0x11, 0x11, 0x11, 0x1F, 0x11, 0x11, 0x11};
+const uint8_t G_I[] = {0x0E, 0x04, 0x04, 0x04, 0x04, 0x04, 0x0E};
+const uint8_t G_K[] = {0x11, 0x12, 0x14, 0x18, 0x14, 0x12, 0x11};
+const uint8_t G_L[] = {0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x1F};
+const uint8_t G_M[] = {0x11, 0x1B, 0x15, 0x15, 0x11, 0x11, 0x11};
+const uint8_t G_N[] = {0x11, 0x11, 0x19, 0x15, 0x13, 0x11, 0x11};
+const uint8_t G_O[] = {0x0E, 0x11, 0x11, 0x11, 0x11, 0x11, 0x0E};
+const uint8_t G_P[] = {0x0E, 0x11, 0x11, 0x0E, 0x10, 0x10, 0x10};
+const uint8_t G_R[] = {0x0E, 0x11, 0x11, 0x0E, 0x14, 0x12, 0x11};
+const uint8_t G_S[] = {0x1F, 0x10, 0x10, 0x0E, 0x01, 0x01, 0x1E};
+const uint8_t G_T[] = {0x1F, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04};
+const uint8_t G_U[] = {0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x0E};
+const uint8_t G_X[] = {0x11, 0x11, 0x0A, 0x04, 0x0A, 0x11, 0x11};
+const uint8_t G_F[] = {0x1E, 0x10, 0x10, 0x1C, 0x10, 0x10, 0x10};
+const uint8_t G_G[] = {0x0E, 0x11, 0x10, 0x17, 0x11, 0x11, 0x0E};
+const uint8_t G_J[] = {0x04, 0x04, 0x04, 0x04, 0x04, 0x11, 0x0E};
+const uint8_t G_Q[] = {0x0E, 0x11, 0x11, 0x11, 0x15, 0x12, 0x0D};
+const uint8_t G_Z[] = {0x1F, 0x01, 0x02, 0x04, 0x08, 0x10, 0x1F};
+const uint8_t G_V[] = {0x11, 0x11, 0x11, 0x11, 0x11, 0x0A, 0x04};
+const uint8_t G_W[] = {0x11, 0x11, 0x11, 0x15, 0x15, 0x15, 0x0A};
+const uint8_t G_Y[] = {0x11, 0x11, 0x0A, 0x04, 0x04, 0x04, 0x04};
+
+const uint8_t *glyphLookup(char c)
+{
+	switch (std::toupper(static_cast<unsigned char>(c)))
+	{
+	case 'A': return G_A;
+	case 'B': return G_B;
+	case 'C': return G_C;
+	case 'D': return G_D;
+	case 'E': return G_E;
+	case 'F': return G_F;
+	case 'G': return G_G;
+	case 'J': return G_J;
+	case 'Q': return G_Q;
+	case 'Z': return G_Z;
+	case 'V': return G_V;
+	case 'W': return G_W;
+	case 'Y': return G_Y;
+	case '0': return G_0;
+	case '1': return G_1;
+	case '2': return G_2;
+	case '3': return G_3;
+	case 'H': return G_H;
+	case 'I': return G_I;
+	case 'K': return G_K;
+	case 'L': return G_L;
+	case 'M': return G_M;
+	case 'N': return G_N;
+	case 'O': return G_O;
+	case 'P': return G_P;
+	case 'R': return G_R;
+	case 'S': return G_S;
+	case 'T': return G_T;
+	case 'U': return G_U;
+	case 'X': return G_X;
+	default:  return nullptr;
+	}
+}
+
+} 
 
 
 void Game::init()
 {
 	bPlay = true;
 	godMode = false;
+	muted = false;
 	memset(keys, 0, sizeof(keys));
-	currentLevel   = 1;
-	state          = STATE_MENU;
-	menuSelection  = 0;
+	currentLevel = 1;
+	state = STATE_MENU;
+	menuSelection = 0;
 	pauseSelection = 0;
+	instrBackHover = false;
 	mouseX = 0;
 	mouseY = 0;
 
@@ -40,20 +149,67 @@ void Game::init()
 
 	scene.initShaders();
 	initUI();
+
+#ifdef USE_SDL
+	SDL_Init(SDL_INIT_AUDIO);
+	Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 2048);
+
+	musicMenu    = Mix_LoadMUS("sound/menu.mp3");
+	musicLevel1  = Mix_LoadMUS("sound/level1.mp3");
+	musicLevel2  = Mix_LoadMUS("sound/level2.mp3");
+	musicLevel3  = Mix_LoadMUS("sound/level3.mp3");
+	musicLevel4  = Mix_LoadMUS("sound/level4.mp3");
+	musicLevel5  = Mix_LoadMUS("sound/level5.mp3");
+	musicPause   = Mix_LoadMUS("sound/pause.mp3");
+	musicWin     = Mix_LoadMUS("sound/win.mp3");
+	musicCredits = Mix_LoadMUS("sound/credits.mp3");
+
+	Mix_AllocateChannels(16);
+	sfxFreeze    = Mix_LoadWAV("sound/freeze.wav");
+	sfxExplosion = Mix_LoadWAV("sound/explosion.wav");
+	sfxGodMode   = Mix_LoadWAV("sound/godmode.wav");
+	sfxItem      = Mix_LoadWAV("sound/item.wav");
+	sfxKey       = Mix_LoadWAV("sound/llave.wav");
+	sfxBoots     = Mix_LoadWAV("sound/velocidad.wav");
+	sfxWarp      = Mix_LoadWAV("sound/warpfloor.wav");
+#endif
+
+	previousState = (GameState)-1;
+	previousLevel = -1;
 }
 
-void Game::initUI()
-{
+void Game::playSfx(GameSfx sfx) {
+#ifdef USE_SDL
+	if (muted)
+		return;
+	Mix_Chunk *ch = nullptr;
+	switch (sfx) {
+	case GameSfx::Freeze:    ch = sfxFreeze;    break;
+	case GameSfx::Explosion: ch = sfxExplosion; break;
+	case GameSfx::GodMode:   ch = sfxGodMode;   break;
+	case GameSfx::ItemPickup: ch = sfxItem;     break;
+	case GameSfx::KeyPickup: ch = sfxKey;       break;
+	case GameSfx::Boots:     ch = sfxBoots;     break;
+	case GameSfx::Warp:      ch = sfxWarp;      break;
+	}
+	if (ch)
+		Mix_PlayChannel(-1, ch, 0);
+#endif
+}
+
+void Game::initUI() {
 	menuTex.loadFromFile("images/ui/menu.png", TEXTURE_PIXEL_FORMAT_RGBA);
-	gameoverTex.loadFromFile("images/ui/gameover.png", TEXTURE_PIXEL_FORMAT_RGBA);
 	winTex.loadFromFile("images/ui/win.png", TEXTURE_PIXEL_FORMAT_RGBA);
 	instructionsTex.loadFromFile("images/ui/instructions.png", TEXTURE_PIXEL_FORMAT_RGBA);
-	pauseTex.loadFromFile("images/ui/pause.png", TEXTURE_PIXEL_FORMAT_RGBA);
 	creditsTex.loadFromFile("images/ui/credits.png", TEXTURE_PIXEL_FORMAT_RGBA);
+
+	muteOnTex.loadFromFile("images/ui/mute_on.png", TEXTURE_PIXEL_FORMAT_RGBA);
+	muteOffTex.loadFromFile("images/ui/mute_off.png", TEXTURE_PIXEL_FORMAT_RGBA);
 
 	btnPlayTex.loadFromFile("images/ui/btn_play.png", TEXTURE_PIXEL_FORMAT_RGBA);
 	btnInstrTex.loadFromFile("images/ui/btn_instructions.png", TEXTURE_PIXEL_FORMAT_RGBA);
 	btnCreditsTex.loadFromFile("images/ui/btn_credits.png", TEXTURE_PIXEL_FORMAT_RGBA);
+	btnBackTex.loadFromFile("images/ui/btn_back.png", TEXTURE_PIXEL_FORMAT_RGBA);
 
 	Shader vShader, fShader;
 	vShader.initFromFile(VERTEX_SHADER, "shaders/texture.vert");
@@ -67,12 +223,12 @@ void Game::initUI()
 	fShader.free();
 
 	float quadData[] = {
-		  0.f,   0.f, 0.f, 0.f,
+		0.f,   0.f, 0.f, 0.f,
 		640.f,   0.f, 1.f, 0.f,
 		640.f, 480.f, 1.f, 1.f,
-		  0.f,   0.f, 0.f, 0.f,
+		0.f,   0.f, 0.f, 0.f,
 		640.f, 480.f, 1.f, 1.f,
-		  0.f, 480.f, 0.f, 1.f
+		0.f, 480.f, 0.f, 1.f
 	};
 
 	glGenVertexArrays(1, &uiVao);
@@ -83,7 +239,17 @@ void Game::initUI()
 	uiPosLoc = uiProgram.bindVertexAttribute("position", 2, 4 * sizeof(float), 0);
 	uiTexLoc = uiProgram.bindVertexAttribute("texCoord", 2, 4 * sizeof(float), (void *)(2 * sizeof(float)));
 
-	// 1x1 white texture for colored quad rendering
+	glGenVertexArrays(1, &uiRectVao);
+	glBindVertexArray(uiRectVao);
+	glGenBuffers(1, &uiRectVbo);
+	glBindBuffer(GL_ARRAY_BUFFER, uiRectVbo);
+	glBufferData(GL_ARRAY_BUFFER, 6 * 4 * sizeof(float), nullptr, GL_STREAM_DRAW);
+	glEnableVertexAttribArray(uiPosLoc);
+	glVertexAttribPointer(uiPosLoc, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void *)0);
+	glEnableVertexAttribArray(uiTexLoc);
+	glVertexAttribPointer(uiTexLoc, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void *)(2 * sizeof(float)));
+	glBindVertexArray(0);
+
 	unsigned char whitePixel[] = {255, 255, 255, 255};
 	glGenTextures(1, &whiteTex);
 	glBindTexture(GL_TEXTURE_2D, whiteTex);
@@ -92,8 +258,7 @@ void Game::initUI()
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 }
 
-void Game::renderUI(Texture &tex)
-{
+void Game::renderUI(Texture &tex) {
 	glm::mat4 proj = glm::ortho(0.f, 640.f, 480.f, 0.f);
 	glm::mat4 mv   = glm::mat4(1.f);
 
@@ -113,13 +278,13 @@ void Game::renderUI(Texture &tex)
 	glDrawArrays(GL_TRIANGLES, 0, 6);
 	glDisable(GL_BLEND);
 	glDisable(GL_TEXTURE_2D);
+	glBindVertexArray(0);
 }
 
 void Game::renderUIAt(Texture &tex, float x, float y, float w, float h)
 {
 	glm::mat4 proj = glm::ortho(0.f, 640.f, 480.f, 0.f);
-	glm::mat4 mv = glm::translate(glm::mat4(1.f), glm::vec3(x, y, 0.f)) *
-	               glm::scale(glm::mat4(1.f), glm::vec3(w / 640.f, h / 480.f, 1.f));
+	glm::mat4 mv = glm::translate(glm::mat4(1.f), glm::vec3(x, y, 0.f)) * glm::scale(glm::mat4(1.f), glm::vec3(w / 640.f, h / 480.f, 1.f));
 
 	uiProgram.use();
 	uiProgram.setUniformMatrix4f("projection", proj);
@@ -137,14 +302,13 @@ void Game::renderUIAt(Texture &tex, float x, float y, float w, float h)
 	glDrawArrays(GL_TRIANGLES, 0, 6);
 	glDisable(GL_BLEND);
 	glDisable(GL_TEXTURE_2D);
+	glBindVertexArray(0);
 }
 
-void Game::renderColorQuad(float x, float y, float w, float h,
-                           float r, float g, float b, float a)
+void Game::renderColorQuad(float x, float y, float w, float h, float r, float g, float b, float a)
 {
 	glm::mat4 proj = glm::ortho(0.f, 640.f, 480.f, 0.f);
-	glm::mat4 mv = glm::translate(glm::mat4(1.f), glm::vec3(x, y, 0.f)) *
-	               glm::scale(glm::mat4(1.f), glm::vec3(w / 640.f, h / 480.f, 1.f));
+	glm::mat4 mv = glm::translate(glm::mat4(1.f), glm::vec3(x, y, 0.f)) * glm::scale(glm::mat4(1.f), glm::vec3(w / 640.f, h / 480.f, 1.f));
 
 	uiProgram.use();
 	uiProgram.setUniformMatrix4f("projection", proj);
@@ -162,6 +326,156 @@ void Game::renderColorQuad(float x, float y, float w, float h,
 	glDrawArrays(GL_TRIANGLES, 0, 6);
 	glDisable(GL_BLEND);
 	glDisable(GL_TEXTURE_2D);
+	glBindVertexArray(0);
+}
+
+void Game::renderTexturedRect(Texture &tex, float x, float y, float w, float h, float u0, float v0, float u1, float v1)
+{
+	float vd[] = {
+		x,     y,     u0, v0,
+		x + w, y,     u1, v0,
+		x + w, y + h, u1, v1,
+		x,     y,     u0, v0,
+		x + w, y + h, u1, v1,
+		x,     y + h, u0, v1
+	};
+
+	glm::mat4 proj = glm::ortho(0.f, 640.f, 480.f, 0.f);
+	glm::mat4 mv   = glm::mat4(1.f);
+
+	uiProgram.use();
+	uiProgram.setUniformMatrix4f("projection", proj);
+	uiProgram.setUniformMatrix4f("modelview", mv);
+	uiProgram.setUniform4f("color", 1.f, 1.f, 1.f, 1.f);
+	uiProgram.setUniform2f("texCoordDispl", 0.f, 0.f);
+
+	glEnable(GL_TEXTURE_2D);
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	tex.use();
+	glBindVertexArray(uiRectVao);
+	glBindBuffer(GL_ARRAY_BUFFER, uiRectVbo);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(vd), vd, GL_STREAM_DRAW);
+	glDrawArrays(GL_TRIANGLES, 0, 6);
+	glDisable(GL_BLEND);
+	glDisable(GL_TEXTURE_2D);
+	glBindVertexArray(0);
+}
+
+void Game::renderSubrectFitted(Texture &tex, float x, float y, float boxW, float boxH,
+							int texW, int texH,
+							float px0, float py0, float px1, float py1,
+							float stretchX,
+							float stretchY)
+{
+	float cw = px1 - px0;
+	float ch = py1 - py0;
+	if (cw <= 0.f || ch <= 0.f)
+		return;
+	float aspect = cw / ch;
+	float bw = boxW;
+	float bh = boxH;
+	float dw, dh;
+	if (aspect > bw / bh)
+	{
+		dw = bw;
+		dh = bw / aspect;
+	}
+	else
+	{
+		dh = bh;
+		dw = bh * aspect;
+	}
+	if (stretchX != 1.f)
+	{
+		dw *= stretchX;
+		if (dw > bw)
+			dw = bw;
+	}
+	if (stretchY != 1.f)
+	{
+		dh *= stretchY;
+		if (dh > bh)
+			dh = bh;
+	}
+	float ox = x + (boxW - dw) * 0.5f;
+	float oy = y + (boxH - dh) * 0.5f;
+	float u0 = px0 / float(texW);
+	float u1 = px1 / float(texW);
+	float v0 = py0 / float(texH);
+	float v1 = py1 / float(texH);
+	renderTexturedRect(tex, ox, oy, dw, dh, u0, v0, u1, v1);
+}
+
+void Game::drawGlyphRows(const uint8_t *rows, float x, float y, float ps, float r, float g, float b)
+{
+	if (!rows)
+		return;
+	for (int row = 0; row < 7; ++row) {
+		uint8_t bits = rows[row];
+		for (int col = 0; col < 5; ++col)
+		{
+			if (bits & (1 << (4 - col)))
+				renderColorQuad(x + col * ps, y + row * ps, ps, ps, r, g, b, 1.f);
+		}
+	}
+}
+
+float Game::measureBitmapTextWidth(const char *text, float pixel) {
+	float w = 0.f;
+	for (const char *t = text; *t; ++t)
+	{
+		if (*t == ' ')
+			w += 4.f * pixel;
+		else if (glyphLookup(*t))
+			w += 6.f * pixel;
+	}
+	return w;
+}
+
+void Game::renderBitmapTextCenter(const char *text, float cx, float cy, float pixel, float r, float g, float b)
+{
+	float w = measureBitmapTextWidth(text, pixel);
+	float x0 = cx - w * 0.5f;
+	float y0 = cy - (7.f * pixel) * 0.5f;
+
+	for (const char *t = text; *t; ++t)
+	{
+		if (*t == ' ')
+		{
+			x0 += 4.f * pixel;
+			continue;
+		}
+		const uint8_t *gr = glyphLookup(*t);
+		drawGlyphRows(gr, x0, y0, pixel, r, g, b);
+		x0 += 6.f * pixel;
+	}
+}
+
+void Game::renderBitmapTextHud(const char *text, float x, float y, float pixel, float r, float g, float b)
+{
+	float y0 = y;
+	for (const char *t = text; *t; ++t)
+	{
+		if (*t == ' ')
+		{
+			x += 4.f * pixel;
+			continue;
+		}
+		const uint8_t *gr = glyphLookup(*t);
+		drawGlyphRows(gr, x, y0, pixel, r, g, b);
+		x += 6.f * pixel;
+	}
+}
+
+void Game::renderBitmapTextHudOutlined(const char *text, float x, float y, float pixel, float r, float g, float b)
+{
+	static const float o = 1.f;
+	static const int kDx[] = {-1, 1, 0, 0, -1, -1, 1, 1};
+	static const int kDy[] = {0, 0, -1, 1, -1, 1, -1, 1};
+	for (int i = 0; i < 8; ++i)
+		renderBitmapTextHud(text, x + float(kDx[i]) * o, y + float(kDy[i]) * o, pixel, 0.f, 0.f, 0.f);
+	renderBitmapTextHud(text, x, y, pixel, r, g, b);
 }
 
 void Game::changeState(GameState s)
@@ -180,23 +494,22 @@ bool Game::update(int deltaTime)
 {
 	switch (state)
 	{
-	case STATE_PLAYING:
-		scene.update(deltaTime);
-		if (scene.isGameOver())
-			state = STATE_GAME_OVER;
-		else if (scene.isLevelComplete())
-		{
-			if (currentLevel < 5)
-				loadLevel(currentLevel + 1);
-			else
-				state = STATE_WIN;
-		}
-		break;
-
-	default:
-		break;
+		case STATE_PLAYING:
+			scene.update(deltaTime);
+			if (scene.isGameOver()) state = STATE_MENU;
+			else if (scene.isLevelComplete())
+			{
+				if (currentLevel < 5)
+					loadLevel(currentLevel + 1);
+				else state = STATE_WIN;
+			}
+			else if (scene.isLevelBack() && currentLevel > 1)
+				loadLevel(currentLevel - 1);
+			break;
+		default:
+			break;
 	}
-
+	updateMusic();
 	return bPlay;
 }
 
@@ -208,23 +521,22 @@ void Game::render()
 	{
 	case STATE_MENU:
 		renderUI(menuTex);
-		// Render button label textures inside the button frames
-		renderUIAt(btnPlayTex,     MENU_BTN_X + 2.f, MENU_BTN_Y[0] + 2.f, MENU_BTN_W - 4.f, MENU_BTN_H - 4.f);
-		renderUIAt(btnInstrTex,    MENU_BTN_X + 2.f, MENU_BTN_Y[1] + 2.f, MENU_BTN_W - 4.f, MENU_BTN_H - 4.f);
-		renderUIAt(btnCreditsTex,  MENU_BTN_X + 2.f, MENU_BTN_Y[2] + 2.f, MENU_BTN_W - 4.f, MENU_BTN_H - 4.f);
-		// Highlight selected button (gold tint + border)
-		renderColorQuad(MENU_BTN_X, MENU_BTN_Y[menuSelection],
-		                MENU_BTN_W, MENU_BTN_H,
-		                1.f, 0.85f, 0.f, 0.25f);
-		// Gold border lines
-		renderColorQuad(MENU_BTN_X, MENU_BTN_Y[menuSelection] - 2.f,
-		                MENU_BTN_W, 2.f, 1.f, 0.85f, 0.f, 1.f);
-		renderColorQuad(MENU_BTN_X, MENU_BTN_Y[menuSelection] + MENU_BTN_H,
-		                MENU_BTN_W, 2.f, 1.f, 0.85f, 0.f, 1.f);
+		renderColorQuad(MENU_BTN_X, MENU_BTN_Y[menuSelection],MENU_BTN_W, MENU_BTN_H,1.f, 0.85f, 0.f, 0.15f);
+		renderSubrectFitted(btnPlayTex, MENU_BTN_X + 4.f, MENU_BTN_Y[0] + 4.f,MENU_BTN_W - 8.f, MENU_BTN_H - 8.f,506, 274,
+		                    BTN_PLAY_CROP[0], BTN_PLAY_CROP[1], BTN_PLAY_CROP[2], BTN_PLAY_CROP[3], 1.22f, 1.f);
+		renderSubrectFitted(btnInstrTex, MENU_BTN_X + 4.f, MENU_BTN_Y[1] + 4.f,
+		                    MENU_BTN_W - 8.f, MENU_BTN_H - 8.f, 640, 476,
+		                    BTN_INSTR_CROP[0], BTN_INSTR_CROP[1], BTN_INSTR_CROP[2], BTN_INSTR_CROP[3]);
+		renderSubrectFitted(btnCreditsTex, MENU_BTN_X + 4.f, MENU_BTN_Y[2] + 4.f,
+		                    MENU_BTN_W - 8.f, MENU_BTN_H - 8.f,486, 263,
+		                    BTN_CRED_CROP[0], BTN_CRED_CROP[1], BTN_CRED_CROP[2], BTN_CRED_CROP[3]);
+		renderColorQuad(MENU_BTN_X - 2.f, MENU_BTN_Y[menuSelection] - 2.f,
+		                MENU_BTN_W + 4.f, 2.f, 1.f, 0.85f, 0.f, 1.f);
+		renderColorQuad(MENU_BTN_X - 2.f, MENU_BTN_Y[menuSelection] + MENU_BTN_H,
+		                MENU_BTN_W + 4.f, 2.f, 1.f, 0.85f, 0.f, 1.f);
 		renderColorQuad(MENU_BTN_X - 2.f, MENU_BTN_Y[menuSelection],
 		                2.f, MENU_BTN_H, 1.f, 0.85f, 0.f, 1.f);
-		renderColorQuad(MENU_BTN_X + MENU_BTN_W, MENU_BTN_Y[menuSelection],
-		                2.f, MENU_BTN_H, 1.f, 0.85f, 0.f, 1.f);
+		renderColorQuad(MENU_BTN_X + MENU_BTN_W, MENU_BTN_Y[menuSelection],2.f, MENU_BTN_H, 1.f, 0.85f, 0.f, 1.f);
 		break;
 
 	case STATE_PLAYING:
@@ -232,83 +544,69 @@ void Game::render()
 		break;
 
 	case STATE_PAUSED:
-	{
-		// Frozen game scene underneath
 		scene.render();
-		// Slight dark tint so the pause overlay reads clearly
-		renderColorQuad(0.f, 0.f, 640.f, 480.f, 0.f, 0.f, 0.f, 0.35f);
-		// pauseTex at ~90% opacity — it is fully opaque but we blend it so
-		// the game scene is faintly visible, and it carries the button labels.
-		{
-			glm::mat4 proj = glm::ortho(0.f, 640.f, 480.f, 0.f);
-			glm::mat4 mv   = glm::mat4(1.f);
-			uiProgram.use();
-			uiProgram.setUniformMatrix4f("projection", proj);
-			uiProgram.setUniformMatrix4f("modelview", mv);
-			uiProgram.setUniform4f("color", 1.f, 1.f, 1.f, 0.92f);
-			uiProgram.setUniform2f("texCoordDispl", 0.f, 0.f);
-			glEnable(GL_TEXTURE_2D);
-			glEnable(GL_BLEND);
-			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-			pauseTex.use();
-			glBindVertexArray(uiVao);
-			glEnableVertexAttribArray(uiPosLoc);
-			glEnableVertexAttribArray(uiTexLoc);
-			glDrawArrays(GL_TRIANGLES, 0, 6);
-			glDisable(GL_BLEND);
-			glDisable(GL_TEXTURE_2D);
-		}
-		// Gold highlight on the selected button row
-		renderColorQuad(PAUSE_BTN_X - 2.f, PAUSE_BTN_Y[pauseSelection] - 2.f,
-		                PAUSE_BTN_W + 4.f, PAUSE_BTN_H + 4.f,
-		                1.f, 0.85f, 0.f, 0.30f);
-		// Gold border lines (top / bottom / left / right)
-		renderColorQuad(PAUSE_BTN_X - 2.f, PAUSE_BTN_Y[pauseSelection] - 2.f,
-		                PAUSE_BTN_W + 4.f, 2.f, 1.f, 0.85f, 0.f, 1.f);
-		renderColorQuad(PAUSE_BTN_X - 2.f, PAUSE_BTN_Y[pauseSelection] + PAUSE_BTN_H,
-		                PAUSE_BTN_W + 4.f, 2.f, 1.f, 0.85f, 0.f, 1.f);
-		renderColorQuad(PAUSE_BTN_X - 2.f, PAUSE_BTN_Y[pauseSelection],
-		                2.f, PAUSE_BTN_H, 1.f, 0.85f, 0.f, 1.f);
-		renderColorQuad(PAUSE_BTN_X + PAUSE_BTN_W, PAUSE_BTN_Y[pauseSelection],
-		                2.f, PAUSE_BTN_H, 1.f, 0.85f, 0.f, 1.f);
-		break;
-	}
-
-	case STATE_GAME_OVER:
-		renderUI(gameoverTex);
+		renderColorQuad(0.f, 0.f, 640.f, 480.f, 0.f, 0.f, 0.f, 0.55f);
+		renderBitmapTextCenter("PAUSED", 320.f, 88.f, 5.f, 1.f, 1.f, 1.f);
+		renderBitmapTextCenter("CONTINUE", 320.f, PAUSE_ROW_Y[0] + PAUSE_ROW_H * 0.5f, 4.f, 1.f, 1.f, 1.f);
+		renderBitmapTextCenter("RESTART", 320.f, PAUSE_ROW_Y[1] + PAUSE_ROW_H * 0.5f, 4.f,1.f, 1.f, 1.f);
+		renderBitmapTextCenter("EXIT", 320.f, PAUSE_ROW_Y[2] + PAUSE_ROW_H * 0.5f, 4.f,1.f, 1.f, 1.f);
+		renderColorQuad(PAUSE_ROW_X - 2.f, PAUSE_ROW_Y[pauseSelection] - 2.f,PAUSE_ROW_W + 4.f, 2.f, 1.f, 0.85f, 0.f, 1.f);
+		renderColorQuad(PAUSE_ROW_X - 2.f, PAUSE_ROW_Y[pauseSelection] + PAUSE_ROW_H,PAUSE_ROW_W + 4.f, 2.f, 1.f, 0.85f, 0.f, 1.f);
+		renderColorQuad(PAUSE_ROW_X - 2.f, PAUSE_ROW_Y[pauseSelection],2.f, PAUSE_ROW_H, 1.f, 0.85f, 0.f, 1.f);
+		renderColorQuad(PAUSE_ROW_X + PAUSE_ROW_W, PAUSE_ROW_Y[pauseSelection],2.f, PAUSE_ROW_H, 1.f, 0.85f, 0.f, 1.f);
 		break;
 
 	case STATE_WIN:
+	{
 		renderUI(winTex);
+		// Back button — larger and higher than instructions page
+		const float winBtnW = 240.f;
+		const float winBtnH = 48.f;
+		const float winBtnX = (640.f - winBtnW) * 0.5f;
+		const float winBtnY = 410.f;
+		renderSubrectFitted(btnBackTex, winBtnX + 2.f, winBtnY + 2.f,
+		                    winBtnW - 4.f, winBtnH - 4.f,
+		                    582, 217,
+		                    BTN_BACK_CROP[0], BTN_BACK_CROP[1], BTN_BACK_CROP[2], BTN_BACK_CROP[3],
+		                    1.18f, 1.18f);
 		break;
+	}
 
 	case STATE_INSTRUCTIONS:
 		renderUI(instructionsTex);
-		// Back button highlight at bottom center
-		renderColorQuad(INSTR_BTN_X, INSTR_BTN_Y,
-		                INSTR_BTN_W, INSTR_BTN_H,
-		                0.2f, 0.2f, 0.4f, 0.5f);
-		// Gold border
-		renderColorQuad(INSTR_BTN_X, INSTR_BTN_Y - 2.f,
-		                INSTR_BTN_W, 2.f, 1.f, 0.85f, 0.f, 1.f);
-		renderColorQuad(INSTR_BTN_X, INSTR_BTN_Y + INSTR_BTN_H,
-		                INSTR_BTN_W, 2.f, 1.f, 0.85f, 0.f, 1.f);
-		renderColorQuad(INSTR_BTN_X - 2.f, INSTR_BTN_Y,
-		                2.f, INSTR_BTN_H, 1.f, 0.85f, 0.f, 1.f);
-		renderColorQuad(INSTR_BTN_X + INSTR_BTN_W, INSTR_BTN_Y,
-		                2.f, INSTR_BTN_H, 1.f, 0.85f, 0.f, 1.f);
+		if (instrBackHover)
+			renderColorQuad(INSTR_BTN_X, INSTR_BTN_Y, INSTR_BTN_W, INSTR_BTN_H,
+			                1.f, 0.85f, 0.f, 0.12f);
+		renderSubrectFitted(btnBackTex, INSTR_BTN_X + 2.f, INSTR_BTN_Y + 2.f,
+		                    INSTR_BTN_W - 4.f, INSTR_BTN_H - 4.f,
+		                    582, 217,
+		                    BTN_BACK_CROP[0], BTN_BACK_CROP[1], BTN_BACK_CROP[2], BTN_BACK_CROP[3],
+		                    1.18f, 1.18f);
 		break;
 
 	case STATE_CREDITS:
 		renderUI(creditsTex);
 		break;
 	}
+
+	//Boton mutear
+	renderTexturedRect(muted ? muteOffTex : muteOnTex,
+	                   MUTE_X, MUTE_Y, MUTE_SIZE, MUTE_SIZE,
+	                   0.f, 0.f, 1.f, 1.f);
 }
 
 void Game::keyPressed(int key)
 {
 	if (key < 0 || key > GLFW_KEY_LAST) return;
 	keys[key] = true;
+
+	if (key == GLFW_KEY_M) {
+		muted = !muted;
+#ifdef USE_SDL
+		Mix_VolumeMusic(muted ? 0 : MIX_MAX_VOLUME);
+#endif
+		return;
+	}
 
 	switch (state)
 	{
@@ -321,7 +619,7 @@ void Game::keyPressed(int key)
 		{
 			switch (menuSelection)
 			{
-			case 0: loadLevel(1);              break;
+			case 0: loadLevel(1);               break;
 			case 1: state = STATE_INSTRUCTIONS; break;
 			case 2: state = STATE_CREDITS;      break;
 			}
@@ -342,6 +640,8 @@ void Game::keyPressed(int key)
 		{
 			godMode = !godMode;
 			scene.setGodMode(godMode);
+			if (godMode)
+				playSfx(GameSfx::GodMode);
 		}
 		else if (key == GLFW_KEY_K)
 			scene.collectAllKeys();
@@ -360,20 +660,13 @@ void Game::keyPressed(int key)
 		{
 			switch (pauseSelection)
 			{
-			case 0: state = STATE_PLAYING;  break; // Continue
-			case 1: loadLevel(currentLevel); break; // Restart
-			case 2: state = STATE_MENU;     break; // Exit
+			case 0: state = STATE_PLAYING;     break;
+			case 1: loadLevel(currentLevel);   break;
+			case 2: state = STATE_MENU;       break;
 			}
 		}
 		else if (key == GLFW_KEY_P || key == GLFW_KEY_ESCAPE)
 			state = STATE_PLAYING;
-		break;
-
-	case STATE_GAME_OVER:
-		if (key == GLFW_KEY_ENTER || key == GLFW_KEY_SPACE)
-			loadLevel(1);
-		else if (key == GLFW_KEY_ESCAPE)
-			state = STATE_MENU;
 		break;
 
 	case STATE_WIN:
@@ -416,19 +709,33 @@ void Game::mouseMove(int x, int y)
 	{
 		for (int i = 0; i < 3; ++i)
 		{
-			if (x >= PAUSE_BTN_X && x <= PAUSE_BTN_X + PAUSE_BTN_W &&
-			    y >= PAUSE_BTN_Y[i] && y <= PAUSE_BTN_Y[i] + PAUSE_BTN_H)
+			if (x >= PAUSE_ROW_X && x <= PAUSE_ROW_X + PAUSE_ROW_W &&
+			    y >= PAUSE_ROW_Y[i] && y <= PAUSE_ROW_Y[i] + PAUSE_ROW_H)
 			{
 				pauseSelection = i;
 				break;
 			}
 		}
 	}
+	else if (state == STATE_INSTRUCTIONS)
+	{
+		instrBackHover = (x >= INSTR_BTN_X && x <= INSTR_BTN_X + INSTR_BTN_W &&
+		                y >= INSTR_BTN_Y && y <= INSTR_BTN_Y + INSTR_BTN_H);
+	}
 }
 
 void Game::mousePress(int button)
 {
-	if (button != 0) return; // left click only
+	if (button != 0) return;
+
+	if (mouseX >= int(MUTE_X) && mouseX <= int(MUTE_X + MUTE_SIZE) &&
+	    mouseY >= int(MUTE_Y) && mouseY <= int(MUTE_Y + MUTE_SIZE)) {
+		muted = !muted;
+#ifdef USE_SDL
+		Mix_VolumeMusic(muted ? 0 : MIX_MAX_VOLUME);
+#endif
+		return;
+	}
 
 	if (state == STATE_MENU)
 	{
@@ -440,7 +747,7 @@ void Game::mousePress(int button)
 				menuSelection = i;
 				switch (i)
 				{
-				case 0: loadLevel(1);              break;
+				case 0: loadLevel(1);               break;
 				case 1: state = STATE_INSTRUCTIONS; break;
 				case 2: state = STATE_CREDITS;      break;
 				}
@@ -452,15 +759,15 @@ void Game::mousePress(int button)
 	{
 		for (int i = 0; i < 3; ++i)
 		{
-			if (mouseX >= PAUSE_BTN_X && mouseX <= PAUSE_BTN_X + PAUSE_BTN_W &&
-			    mouseY >= PAUSE_BTN_Y[i] && mouseY <= PAUSE_BTN_Y[i] + PAUSE_BTN_H)
+			if (mouseX >= PAUSE_ROW_X && mouseX <= PAUSE_ROW_X + PAUSE_ROW_W &&
+			    mouseY >= PAUSE_ROW_Y[i] && mouseY <= PAUSE_ROW_Y[i] + PAUSE_ROW_H)
 			{
 				pauseSelection = i;
 				switch (i)
 				{
-				case 0: state = STATE_PLAYING;   break;
-				case 1: loadLevel(currentLevel); break;
-				case 2: state = STATE_MENU;      break;
+				case 0: state = STATE_PLAYING;     break;
+				case 1: loadLevel(currentLevel);   break;
+				case 2: state = STATE_MENU;         break;
 				}
 				return;
 			}
@@ -470,6 +777,19 @@ void Game::mousePress(int button)
 	{
 		if (mouseX >= INSTR_BTN_X && mouseX <= INSTR_BTN_X + INSTR_BTN_W &&
 		    mouseY >= INSTR_BTN_Y && mouseY <= INSTR_BTN_Y + INSTR_BTN_H)
+		{
+			state = STATE_MENU;
+			return;
+		}
+	}
+	else if (state == STATE_WIN)
+	{
+		const float winBtnW = 240.f;
+		const float winBtnX = (640.f - winBtnW) * 0.5f;
+		const float winBtnY = 410.f;
+		const float winBtnH = 48.f;
+		if (mouseX >= winBtnX && mouseX <= winBtnX + winBtnW &&
+		    mouseY >= winBtnY && mouseY <= winBtnY + winBtnH)
 		{
 			state = STATE_MENU;
 			return;
@@ -485,4 +805,51 @@ bool Game::getKey(int key) const
 {
 	if (key < 0 || key > GLFW_KEY_LAST) return false;
 	return keys[key];
+}
+
+void Game::updateMusic()
+{
+#ifdef USE_SDL
+	if(state != previousState || currentLevel != previousLevel)
+	{
+		Mix_HaltMusic();
+
+		switch(state)
+		{
+		case STATE_MENU:
+			Mix_PlayMusic(musicMenu,-1);
+			break;
+
+		case STATE_PLAYING:
+			switch(currentLevel)
+			{
+			case 1: Mix_PlayMusic(musicLevel1,-1); break;
+			case 2: Mix_PlayMusic(musicLevel2,-1); break;
+			case 3: Mix_PlayMusic(musicLevel3,-1); break;
+			case 4: Mix_PlayMusic(musicLevel4,-1); break;
+			case 5: Mix_PlayMusic(musicLevel5,-1); break;
+			}
+			break;
+
+		case STATE_PAUSED:
+			Mix_PlayMusic(musicPause,-1);
+			break;
+
+		case STATE_WIN:
+			Mix_PlayMusic(musicWin,-1);
+			break;
+
+		case STATE_CREDITS:
+			Mix_PlayMusic(musicCredits,-1);
+			break;
+
+		default:
+			Mix_HaltMusic();
+			break;
+		}
+
+		previousState = state;
+		previousLevel = currentLevel;
+	}
+#endif
 }

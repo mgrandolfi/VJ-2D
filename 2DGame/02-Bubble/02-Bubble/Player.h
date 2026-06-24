@@ -29,16 +29,26 @@ public:
 
 	void setGodMode(bool g)  { godMode = g; }
 	void applyBoots(int ms)  { bootTimer = ms; }
+	void playDoorEnterAnim();
+	void playDoorExitAnim();
+
+	void startWarpDisappear();
+	void startWarpAppear(const glm::ivec2 &destPos);
+	bool isWarpDisappearing() const { return warpDisappearing; }
+	bool isWarping()          const { return warpDisappearing || warpAppearing; }
+
+	void startOpenChest();
+	bool isOpeningChest()     const { return openingChest; }
 
 private:
 	glm::ivec2  tileMapDispl, posPlayer;
-	int         spriteSize;      // world-unit size (= tileSize)
+	int         spriteSize;     
 
-	// Jump state (sine-arc approach)
+	// Jump state
 	bool        isJumping;
-	int         jumpAngle;       // 0 → 180 (degrees)
-	int         startY;          // Y position when jump began
-	int         landAnimTimer;     // ms left before leaving LAND_* (keyframes loop otherwise)
+	int         jumpAngle;       // 0 - 180 (degrees)
+	int         startY;          // Y position cuando empieza salto
+	int         landAnimTimer;     
 
 	// Physics flags
 	bool        onGround;
@@ -47,12 +57,22 @@ private:
 
 	// Status
 	bool        godMode;
-	int         bootTimer;       // ms remaining for speed boost
-	int         hurtTimer;       // ms of post-hit invincibility
+	int         bootTimer;       // ms que quedan de boost (0 = no boost)
+	int         hurtTimer;      
 	int         livesPlayer;
+
+	// Warp state
+	bool        warpDisappearing;
+	bool        warpAppearing;
+	float       warpTimer;
+
+	// Chest open
+	bool        openingChest;
+	float       chestTimer;
 
 	// Graphics
 	Texture     spritesheet;
+	Texture     spritesheetFast;   
 	Sprite     *sprite;
 	TileMap    *map;
 };

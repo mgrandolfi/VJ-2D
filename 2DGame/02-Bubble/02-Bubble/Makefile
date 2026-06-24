@@ -1,7 +1,7 @@
 CXX      = g++
 CC       = gcc
 CXXFLAGS = -std=c++17 -Wall -O2
-CFLAGS   = -Wall -O2
+CFLAGS   = -w -O2
 
 # SOIL path (use absolute to avoid space issues)
 SOIL_DIR = $(shell cd ../../../libs/Simple\ OpenGL\ Image\ Library/src && pwd)
@@ -11,6 +11,13 @@ INCLUDES = -I"$(SOIL_DIR)"
 
 # Libraries (system packages on Fedora: glew-devel glfw-devel mesa-libGL-devel)
 LIBS = -lGLEW -lglfw -lGL
+
+# Auto-detect SDL2 and SDL2_mixer — sound is optional
+SDL2_OK := $(shell pkg-config --exists sdl2 SDL2_mixer 2>/dev/null && echo yes)
+ifeq ($(SDL2_OK),yes)
+  CXXFLAGS += -DUSE_SDL
+  LIBS     += -lSDL2 -lSDL2_mixer
+endif
 
 # C++ source files for 02-Bubble
 CPP_SRCS = \

@@ -14,7 +14,9 @@ enum TileType
 	TILE_LADDER,
 	TILE_DOOR,
 	TILE_JUMP,
-	TILE_WARP
+	TILE_WARP,
+	TILE_CLIFF,     //rampas o cuestas
+	TILE_SECRET     //trigger para puerta secreta
 };
 
 class TileMap
@@ -35,17 +37,24 @@ public:
 	int getMapWidth() const { return mapSize.x; }
 	int getMapHeight() const { return mapSize.y; }
 
-	bool collisionMoveLeft(const glm::ivec2 &pos, const glm::ivec2 &size) const;
-	bool collisionMoveRight(const glm::ivec2 &pos, const glm::ivec2 &size) const;
+	bool collisionMoveLeft(const glm::ivec2 &pos, const glm::ivec2 &size,
+	                       bool blockLadders = false) const;
+	bool collisionMoveRight(const glm::ivec2 &pos, const glm::ivec2 &size,
+	                        bool blockLadders = false) const;
 	bool collisionMoveDown(const glm::ivec2 &pos, const glm::ivec2 &size, int *posY) const;
 	bool collisionMoveUp(const glm::ivec2 &pos, const glm::ivec2 &size, int *posY) const;
 
-	// Tile type queries at world pixel positions
+	// Tile type queries
 	TileType tileTypeAt(int worldX, int worldY) const;
 	bool isOnLadder(const glm::ivec2 &pos, const glm::ivec2 &size) const;
+	bool isOnCliff(const glm::ivec2 &pos, const glm::ivec2 &size) const;
 	bool isOnDoor(const glm::ivec2 &pos, const glm::ivec2 &size) const;
+	bool isOnSecret(const glm::ivec2 &pos, const glm::ivec2 &size) const;
 	bool isOnJump(const glm::ivec2 &pos, const glm::ivec2 &size) const;
 	bool isOnWarp(const glm::ivec2 &pos, const glm::ivec2 &size) const;
+
+	glm::ivec2 findTileId(int tileId) const;
+	int getTileIdAt(int tx, int ty) const;
 
 	void setTileType(int tile, TileType type);
 	void setTileTypeRange(int tileFrom, int tileTo, TileType type);
